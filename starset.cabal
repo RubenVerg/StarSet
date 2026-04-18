@@ -1,0 +1,23 @@
+cabal-version: 3.14
+name: starset
+version: 0.1.0
+license: MIT
+license-file: LICENSE
+author: RubenVerg
+maintainer: me@rubenverg.com
+build-type: Simple
+
+executable starset
+  ghc-options: -Wall
+  default-language: GHC2024
+  hs-source-dirs: src
+  main-is: Main.hs
+  build-depends: base
+               , miso
+  if arch(wasm32)
+    ghc-options:
+      -no-hs-main
+      -optl-mexec-model=reactor
+      "-optl-Wl,--export=hs_start"
+    cpp-options:
+      -DWASM
