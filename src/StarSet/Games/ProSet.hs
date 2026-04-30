@@ -1,0 +1,142 @@
+{-# LANGUAGE TypeFamilies, OverloadedStrings, OverloadedLists #-}
+
+module StarSet.Games.ProSet
+  ( proSet
+  , sevenCardProSet
+  ) where
+
+import StarSet.Game
+
+import Data.Bits
+import Numeric.Natural
+
+import Miso hiding (set)
+import qualified Miso.Html as H
+import qualified Miso.Html.Property as P
+import qualified Miso.CSS as C
+import qualified Data.Set as Set
+
+commonStyles :: [CSS]
+commonStyles =
+  [ Style "@font-face { font-family: ProSet; src: url('data:font/woff2;base64,d09GMk9UVE8AAAKwAAoAAAAABiQAAAJjAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAADYIcP0ZGVE0cBmAAgkIBNgIkAwgEBgWEEAcgG3EFAK4GbGM4eiGKURWlNEpjHYqqj65M/uLfeY8I4vf73+w595mmb1qd+BNiSUQSIWrGK40qmqiUbp5o1q7/tbZ3EjJD/JjvLnhlrjLdZE8Q8UYuRFpiOLy176fVb5jbskw79f35xblefLSFU+vzXJPPIkU+H/tR9apwFPU86dTX9XwEez4s0RkNlGZtrZ3Oj5B7mDogPoKIJoWiEBHNg5NKt+oLKElY+t/z/8J5guRJmkfY6/CtVq9Kfrv0hESfvA8eck0oYkhLwhifeMOlcC/yIx7txborJ53YzjEAm6kRczcSZAMCIC0HCmsdyY+mW0DfLv9t4XI3ZLf/BL6lR9J/b4py/vZW+riL5cwCG9GIG7Ch3WZArWoYBjQYoSFToV6J7yU5c6kq4dqLa83rOgj43nn9IfzojDxYrxo9CT3/ivuoQrpJfsRtudP4hAchqTQABADsuWT0cXNWJ8+UVPOMDwjIM4AZCjIyJihggyYwQTcDCoXA2bI8/ubyoQCiSsh+WJB3DgSvDvVbb+NPvZV/jWQBpXNnngF1CQRjU/0FWFIF8FKplq5nDyR0PReAURk+QsM5JDVXkC36otCIJip6sWl3VSOOQBNFA2sgCEMVJF2Xke32QmHoh4qpiN9b1TAelE3N7C04LLYVEtYTQQRGyIkjC2td0gSm9XOBgyZWHCsjUp+AKb5rH8myNtKxgO+idQLbTU2s7E9asEhESGJICbVslA0KXEJGgq2H1zsVvWBhSRJJRiVioPo1wROZBOVIXIlDtYUlh1sHwjCck5aHeGarMMaTbIvUYjqDvLI1EAAAAA=='); }"
+  , Sheet $ C.sheet_
+    [ C.selector_ ".empty"
+      [ "-webkit-text-stroke" =: "3px var(--dot-color)"
+      , "-webkit-text-fill-color" =: "transparent"
+      ]
+    , C.selector_ ".filled"
+      [ "-webkit-text-stroke" =: "3px var(--dot-color)"
+      , "-webkit-text-fill-color" =: "var(--dot-color)"
+      ]
+    , C.selector_ ".card :nth-child(1)"
+      [ "--dot-color" =: "#7b5ea7"
+      ]
+    , C.selector_ ".card :nth-child(2)"
+      [ "--dot-color" =: "#0e76e8"
+      ]
+    , C.selector_ ".card :nth-child(3)"
+      [ "--dot-color" =: "#2d9a4e"
+      ]
+    , C.selector_ ".card :nth-child(4)"
+      [ "--dot-color" =: "#eae23e"
+      ]
+    , C.selector_ ".card :nth-child(5)"
+      [ "--dot-color" =: "#ffa102"
+      ]
+    , C.selector_ ".card :nth-child(6)"
+      [ "--dot-color" =: "#e63946"
+      ]
+    , C.selector_ ".card :nth-child(7)"
+      [ "--dot-color" =: "#c03db8"
+      ]
+    , C.selector_ ".card :nth-child(8)"
+      [ "--dot-color" =: "#9cec3b"
+      ]
+    , C.selector_ ".card :nth-child(9)"
+      [ "--dot-color" =: "#3a3a3a"
+      ]
+    , C.selector_ ".card :nth-child(10)"
+      [ "--dot-color" =: "#b9b9b9"
+      ]
+    , C.selector_ ".card"
+      [ C.fontSize $ C.em 4
+      , C.fontFamily "ProSet"
+      , C.width $ C.pct 100 
+      , C.height $ C.pct 100
+      , C.display "grid"
+      , C.justifyItems "center"
+      , C.alignItems "center"
+      , C.gridTemplateColumns "repeat(2, 1fr)"
+      , C.verticalAlign "top"
+      , "-webkit-user-select" =: "none"
+      , "-moz-user-select" =: "none"
+      , "-ms-user-select" =: "none"
+      , "user-select" =: "none"
+      ]
+    ]
+  ]
+
+commonRender :: Natural -> Natural -> View model action
+commonRender n x = let
+  bits = testBit x <$> [0..fromIntegral n - 1] :: [Bool]
+  spans = (\o -> H.span_ [P.classes_ [if o then "filled" else "empty"]] [text "a"]) <$> bits
+  in H.div_ [P.classes_ ["card"]] spans
+
+newtype ProSet = ProSet Natural deriving (Eq, Ord, Show)
+data SevenCardProSet = SevenCardProSet deriving (Eq, Ord, Show)
+
+instance Game ProSet where
+  type Card ProSet = Natural
+  type Collection ProSet = (Natural, Natural, Natural)
+
+  deck (ProSet n) = [1..2 ^ n - 1]
+  laidDown (ProSet _) = 12
+  noSetAction (ProSet _) = AddMore 3
+  minimumSet (ProSet _) = 3
+  maximumSet (ProSet _) = Just 3
+  makeSet (ProSet _) [a, b, c] = (a, b, c)
+  makeSet (ProSet _) _ = error "Unexpected set size"
+  isSet (ProSet _) (a, b, c) = a `xor` b `xor` c == 0
+
+  styles (ProSet _) = commonStyles
+  renderCard (ProSet n) = commonRender n
+
+  rules (ProSet n) = H.div_ []
+    [ H.div_ []
+      [ text $ toMisoString $ "The cards have " ++ show n ++ " dots, each of which can be empty or filled."
+      ]
+    , H.div_ []
+      [ text "A set is a group of three cards where, for each dot, exactly two or exactly zero cards have that dot filled."
+      ]
+    ]
+
+instance Game SevenCardProSet where
+  type Card SevenCardProSet = Natural
+  type Collection SevenCardProSet = [Natural]
+
+  deck SevenCardProSet = [1..2 ^ (6 :: Int) - 1]
+  laidDown SevenCardProSet = 7
+  noSetAction SevenCardProSet = Redeal
+  minimumSet SevenCardProSet = 3
+  maximumSet SevenCardProSet = Nothing
+  makeSet SevenCardProSet = Set.toList
+  isSet SevenCardProSet = (== 0) . foldr1 xor
+
+  styles SevenCardProSet = commonStyles
+  renderCard SevenCardProSet = commonRender 6
+
+  rules SevenCardProSet = H.div_ []
+    [ H.div_ []
+      [ text "The cards have 6 dots, each of which can be empty or filled."
+      ]
+    , H.div_ []
+      [ text "A set is a group of at least three cards where, for each dot, an even number of cards has that dot filled."
+      ]
+    ]
+
+
+proSet :: Natural -> SomeGame
+proSet = SomeGame . ProSet
+
+sevenCardProSet :: SomeGame
+sevenCardProSet = SomeGame SevenCardProSet
