@@ -13,6 +13,7 @@ import Control.Exception (catch)
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.List
+import Data.Maybe
 
 import Servant
 import Servant.API.WebSocket
@@ -106,12 +107,14 @@ gameServer i@(NanoID (T.decodeUtf8 -> is)) ci conn = forever $ do
 checkForSet :: forall g. Game g => NanoID -> GameState g -> [Card g] -> AppM (GameState g)
 checkForSet ci gt@GameState{ stateGame = g, stateDeck = d, stateShowing = s, stateConnections = conns, stateStart = st } sel = case play g s d sel of
   None -> pure gt
-  NoMoreSets -> do
+  NoMoreSets as -> do
     n <- liftIO $ (* 1000) . realToFrac <$> getPOSIXTime
     forM_ (Map.toList conns) $ \(ci1, (conn, yours)) -> send conn $ S2CGameOver @g (n - st) yours (fmap snd $ Map.elems $ Map.delete ci1 conns)
+    forM_ (map fst $ Map.elems conns) $ flip send $ S2CAchieve @g as
     pure gt
-  FoundSet d' -> do
+  FoundSet as d' -> do
     let gt' = gt{ stateDeck = d', stateConnections = Map.update (\(conn, count) -> Just (conn, count + 1)) ci conns }
+    send (fst $ fromJust $ Map.lookup ci conns) $ S2CAchieve @g as
     checkForSet ci gt' []
   Redealt d' -> do
     let gt' = gt{ stateDeck = d' }

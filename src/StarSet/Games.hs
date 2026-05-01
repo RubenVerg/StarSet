@@ -1,5 +1,6 @@
 module StarSet.Games
   ( games
+  , firstGame
   ) where
 
 import StarSet.Game
@@ -10,7 +11,7 @@ import StarSet.Games.SuperSet
 
 games :: [(String, SomeGame)]
 games =
-  [ ("set", set)
+  [ firstGame
   , ("proSet", proSet 6)
   , ("proSet4", proSet 4)
   , ("7cardProSet", sevenCardProSet)
@@ -21,3 +22,6 @@ games =
   , ("colorNearSet", colorNearSet)
   , ("superSet", superSet)
   ]
+
+firstGame :: (String, SomeGame)
+firstGame = ("set", set)

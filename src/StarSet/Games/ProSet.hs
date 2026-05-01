@@ -8,6 +8,7 @@ module StarSet.Games.ProSet
 import StarSet.Game
 
 import Data.Bits
+import Data.Void
 import Numeric.Natural
 
 import Miso hiding (set)
@@ -88,12 +89,17 @@ commonRender n x = let
 newtype ProSet = ProSet Natural deriving (Eq, Ord, Show)
 data SevenCardProSet = SevenCardProSet deriving (Eq, Ord, Show)
 
+instance Named ProSet where
+  name (ProSet 6) = "ProSet"
+  name (ProSet n) = "ProSet (" <> toMisoString (show n) <> " dots)"
+
 instance Game ProSet where
   type Card ProSet = Natural
   type Collection ProSet = (Natural, Natural, Natural)
+  type SpecificAchievement ProSet = Void
 
-  name (ProSet 6) = "ProSet"
-  name (ProSet n) = "ProSet (" <> toMisoString (show n) <> " dots)"
+  achievements (ProSet _) = []
+  completeAchievement (ProSet _) = Nothing
 
   deck (ProSet n) = [1..2 ^ n - 1]
   laidDown (ProSet _) = 12
@@ -103,6 +109,7 @@ instance Game ProSet where
   makeSet (ProSet _) [a, b, c] = (a, b, c)
   makeSet (ProSet _) _ = error "Unexpected set size"
   isSet (ProSet _) (a, b, c) = a `xor` b `xor` c == 0
+  setAchievements (ProSet _) _ = []
 
   styles (ProSet _) = commonStyles
   renderCard (ProSet n) = commonRender n
@@ -116,11 +123,15 @@ instance Game ProSet where
       ]
     ]
 
+instance Named SevenCardProSet where name SevenCardProSet = "7-card ProSet"
+
 instance Game SevenCardProSet where
   type Card SevenCardProSet = Natural
   type Collection SevenCardProSet = [Natural]
+  type SpecificAchievement SevenCardProSet = Void
 
-  name SevenCardProSet = "7-card ProSet"
+  achievements SevenCardProSet = []
+  completeAchievement SevenCardProSet = Nothing
 
   deck SevenCardProSet = [1..2 ^ (6 :: Int) - 1]
   laidDown SevenCardProSet = 7
@@ -129,6 +140,7 @@ instance Game SevenCardProSet where
   maximumSet SevenCardProSet = Nothing
   makeSet SevenCardProSet = Set.toList
   isSet SevenCardProSet = (== 0) . foldr1 xor
+  setAchievements SevenCardProSet _ = []
 
   styles SevenCardProSet = commonStyles
   renderCard SevenCardProSet = commonRender 6

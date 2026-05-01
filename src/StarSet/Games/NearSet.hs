@@ -12,6 +12,7 @@ import StarSet.Game
 import StarSet.Card.Set
 
 import Data.List (nub, unzip4, (\\))
+import Data.Void
 import Type.Reflection
 
 import Miso (text, toMisoString)
@@ -35,11 +36,15 @@ isNearSet cards = isNearSetOn SetNumber cards || isNearSetOn SetFill cards || is
 
 data NearSet = NearSet deriving (Eq, Ord, Show)
 
+instance Named NearSet where name NearSet = "NearSet"
+
 instance Game NearSet where
   type Card NearSet = SetCard
   type Collection NearSet = (SetCard, SetCard, SetCard)
+  type SpecificAchievement NearSet = Void
 
-  name NearSet = "NearSet"
+  achievements NearSet = []
+  completeAchievement NearSet = Nothing
 
   deck NearSet = setDeck
   laidDown NearSet = 12
@@ -49,6 +54,7 @@ instance Game NearSet where
   makeSet NearSet [a, b, c] = (a, b, c)
   makeSet NearSet _ = error "Unexpected set size"
   isSet NearSet = isNearSet
+  setAchievements NearSet _ = []
 
   styles NearSet = setStyles
   renderCard NearSet = renderSetCard
@@ -71,11 +77,16 @@ instance Eq (NearSetOn a) where _ == _ = True
 instance Ord (NearSetOn a) where compare _ _ = EQ
 deriving instance Show (NearSetOn a)
 
+instance Named (NearSetOn a) where
+  name (NearSetOn prop) = "NearSet (" <> toMisoString (show prop) <> " only)"
+
 instance (Enum a, Bounded a, Eq a, Typeable a) => Game (NearSetOn a) where
   type Card (NearSetOn a) = SetCard
   type Collection (NearSetOn a) = (SetCard, SetCard, SetCard)
+  type SpecificAchievement (NearSetOn a) = Void
 
-  name (NearSetOn prop) = "NearSet (" <> toMisoString (show prop) <> " only)"
+  achievements (NearSetOn _) = []
+  completeAchievement (NearSetOn _) = Nothing
 
   deck (NearSetOn _) = setDeck
   laidDown (NearSetOn _) = 12
@@ -85,6 +96,7 @@ instance (Enum a, Bounded a, Eq a, Typeable a) => Game (NearSetOn a) where
   makeSet (NearSetOn _) [a, b, c] = (a, b, c)
   makeSet (NearSetOn _) _ = error "Unexpected set size"
   isSet (NearSetOn prop) = isNearSetOn prop
+  setAchievements (NearSetOn _) _ = []
 
   styles (NearSetOn _) = setStyles
   renderCard (NearSetOn _) = renderSetCard

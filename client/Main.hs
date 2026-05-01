@@ -27,6 +27,7 @@ import Miso.Subscription.Util
 import Miso.WebSocket
 import Miso.Router
 import qualified Miso.DSL as FFI
+import Data.Set (Set)
 import qualified Data.Set as Set
 import System.Random (uniformShuffleList, mkStdGen)
 import Data.Time.Clock
@@ -69,6 +70,7 @@ data GameEvent (online :: Bool) g where
   GotS2C :: S2CMessage g -> GameEvent True g
   ShowRules :: GameEvent online g
   HideRules :: GameEvent online g
+  Achieve :: Set Achievement -> GameEvent online g
 
 deriving instance Game g => Show (GameEvent online g)
 
@@ -184,10 +186,14 @@ checkForSet = do
   case state of
     Playing{ stateGame = g, stateDeck = d, stateShowing = s, stateSelected = sel, stateStart = st, stateCode = cd, stateConfig = cfg, stateShowingRules = sr } -> case play g s d sel of
       None -> pure ()
-      NoMoreSets -> sync $ do
+      NoMoreSets as -> do
+        issue $ Achieve as
+        sync $ do
           end <- Date.new >>= Date.getTime
           pure $ Finish d $ realToFrac $ (end - st) / 1000
-      FoundSet d' -> put Playing{ stateGame = g, stateDeck = d', stateShowing = s, stateSelected = [], stateStart = st, stateCode = cd, stateConfig = cfg, stateShowingRules = sr } >> checkForSet
+      FoundSet as d' -> do
+        put Playing{ stateGame = g, stateDeck = d', stateShowing = s, stateSelected = [], stateStart = st, stateCode = cd, stateConfig = cfg, stateShowingRules = sr } >> checkForSet
+        issue $ Achieve as
       Redealt d' -> put Playing{ stateGame = g, stateDeck = d', stateShowing = s, stateSelected = [], stateStart = st, stateCode = cd, stateConfig = cfg, stateShowingRules = sr } >> checkForSet
       AddedMore n -> put Playing{ stateGame = g, stateDeck = d, stateShowing = s + n, stateSelected = sel, stateStart = st, stateCode = cd, stateConfig = cfg, stateShowingRules = sr } >> checkForSet
     _ -> pure ()
@@ -254,6 +260,10 @@ gameHandle (GotS2C (S2CInfo start code)) = modify $ \case
   s@Playing{} -> s{ stateStart = start, stateCode = wrapCode @online @g code }
   s -> s{ stateCode = wrapCode @online @g code }
 gameHandle (GotS2C (S2CGameOver t y o)) = modify $ \s -> Finished{ stateGame = stateGame s, stateDeck = stateDeck s, stateTime = realToFrac $ t / 1000, stateCode = stateCode s, stateConfig = stateConfig s, stateScore = (y, o), stateShowingRules = stateShowingRules s }
+gameHandle (GotS2C (S2CAchieve achs)) = issue $ Achieve achs
+gameHandle (Achieve achs) = sync_ $ do
+  s <- decode . fromMaybe "[]" <$> getLocalStorage "achievements"
+  setLocalStorage "achievements" $ encode $ Set.toList $ Set.union achs $ Set.fromList $ fromMaybe [] s
 gameHandle ShowRules = modify $ \s -> s{ stateShowingRules = True }
 gameHandle HideRules = modify $ \s -> s{ stateShowingRules = False }
 
@@ -358,16 +368,19 @@ newtype Config = Config { configHints :: Bool }
 
 data AppState where
   BeginState :: Config -> MisoString -> String -> AppState
+  AchievementsState :: Config -> Set Achievement -> AppState
   LocalState :: Game g => Config -> Double -> g -> [Card g] -> AppState
   OnlineState :: Game g => Config -> WebSocket -> Double -> g -> [Card g] -> AppState
 
 appConfig :: AppState -> Config
 appConfig (BeginState c _ _) = c
+appConfig (AchievementsState c _) = c
 appConfig (LocalState c _ _ _) = c
 appConfig (OnlineState c _ _ _ _) = c
 
 instance Eq AppState where
   (BeginState a0 a1 a2) == (BeginState b0 b1 b2) = (a0, a1, a2) == (b0, b1, b2)
+  (AchievementsState a0 a1) == (AchievementsState b0 b1) = (a0, a1) == (b0, b1)
   (LocalState @a a0 a1 a2 a3) == (LocalState @b b0 b1 b2 b3) = case eqTypeRep (typeRep @a) (typeRep @b) of
     Just HRefl -> (a0, a1, a2, a3) == (b0, b1, b2, b3)
     Nothing -> False
@@ -397,6 +410,8 @@ data AppEvent where
   OnlineMessage :: Game g => S2CMessage g -> AppEvent
   OnlineError :: MisoString -> AppEvent
   SendC2S :: SendC2SRequest -> AppEvent
+  Achievements :: AppEvent
+  DoAchievements :: Set Achievement -> AppEvent
 
 handle :: AppEvent -> Effect parent AppState AppEvent
 handle Begin = do
@@ -435,7 +450,7 @@ handle (ChangeCode code) = modify $ \case
   BeginState c _ s -> BeginState c code s
   o -> o
 handle (OnlineOpen g sock) = issue $ OnlineBegin sock g
-handle (OnlineClose _) = modify $ \(appConfig -> c) -> BeginState c "" (head $ fst <$> games)
+handle (OnlineClose _) = modify $ \(appConfig -> c) -> BeginState c "" $ fst firstGame
 handle (OnlineMessage msg) = broadcast msg
 handle (OnlineError err) = sync_ $ print err
 handle (SendC2S (SendC2SRequest c2s)) = do
@@ -443,6 +458,10 @@ handle (SendC2S (SendC2SRequest c2s)) = do
   case st of
     OnlineState _ sock _ _ _ -> sendJSON sock c2s
     _ -> pure ()
+handle Achievements = sync $ do
+  s <- decode . fromMaybe "[]" <$> getLocalStorage "achievements"
+  pure $ DoAchievements $ Set.fromList $ fromMaybe [] s
+handle (DoAchievements achs) = modify $ \(appConfig -> c) -> AchievementsState c achs
 
 render :: AppState -> View AppState AppEvent
 render (BeginState _ code k) = H.div_ []
@@ -454,7 +473,9 @@ render (BeginState _ code k) = H.div_ []
   , H.button_ [H.onClick Host] [text "New online game"]
   , H.input_ [H.onInput ChangeCode, P.value_ code]
   , H.button_ [H.onClick Connect] [text "Connect"]
+  , H.button_ [H.onClick Achievements] [text "Achievements"]
   ]
+render (AchievementsState _ achs) = H.div_ [] [H.dl_ [] $ concatMap (\ach -> H.dt_ [] [text $ name ach] : (H.dd_ [] . pure . text <$> description ach)) $ Set.toAscList achs]
 render (LocalState c st g d) = mount_ $ gameComponent @False c st g d
 render (OnlineState c _ st g d) = mount_ $ gameComponent @True c st g d
 
@@ -472,9 +493,9 @@ makeApp state = (component state handle render)
   }
 
 app :: Route -> App AppState AppEvent
-app (Index (QueryFlag hints)) = makeApp $ BeginState (Config hints) "" $ head $ fst <$> games
-app (Join (QueryFlag hints) (QueryParam Nothing)) = makeApp $ BeginState (Config hints) "" $ head $ fst <$> games
-app (Join (QueryFlag hints) (QueryParam (Just code))) = (makeApp $ BeginState (Config hints) code $ head $ fst <$> games){ mount = Just Connect }
+app (Index (QueryFlag hints)) = makeApp $ BeginState (Config hints) "" $ fst firstGame
+app (Join (QueryFlag hints) (QueryParam Nothing)) = makeApp $ BeginState (Config hints) "" $ fst firstGame
+app (Join (QueryFlag hints) (QueryParam (Just code))) = (makeApp $ BeginState (Config hints) code $ fst firstGame){ mount = Just Connect }
 
 icon :: MisoString -> View model action
 icon str = H.i_ [P.classes_ ["bi", "bi-" <> str]] []

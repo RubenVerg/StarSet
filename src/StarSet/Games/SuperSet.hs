@@ -9,6 +9,7 @@ import StarSet.Card.Set
 
 import Data.List (find, (\\))
 import Data.Maybe
+import Data.Void
 
 import Miso (text)
 import qualified Miso.Html as H
@@ -24,11 +25,15 @@ thirdCard (SetCard n1 f1 s1 c1) (SetCard n2 f2 s2 c2) = let
   c = if c1 == c2 then c1 else fromJust $ find ((&&) <$> (/= c1) <*> (/= c2)) ([minBound..maxBound] :: [SetColor])
   in SetCard n f s c
 
+instance Named SuperSet where name SuperSet = "SuperSet"
+
 instance Game SuperSet where
   type Card SuperSet = SetCard
   type Collection SuperSet = (SetCard, SetCard, SetCard, SetCard)
+  type SpecificAchievement SuperSet = Void
 
-  name SuperSet = "SuperSet"
+  achievements SuperSet = []
+  completeAchievement SuperSet = Nothing
 
   deck SuperSet = setDeck
   laidDown SuperSet = 9
@@ -42,6 +47,7 @@ instance Game SuperSet where
       [u, v] -> thirdCard x y == thirdCard u v
       _ -> False
     _ -> False) $ variate 2 [a, b, c, d]
+  setAchievements SuperSet _ = []
 
   styles SuperSet = setStyles
   renderCard SuperSet = renderSetCard
