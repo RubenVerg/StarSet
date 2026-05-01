@@ -140,8 +140,12 @@ server = socketServer
       Just (SomeGameState (stateGame -> g)) -> case find (\(_, g') -> SomeGame g == g') games of
         Just (k, _) -> pure k
         _ -> pure "")
-  :<|> serveDirectoryWith (defaultWebAppSettings "dist"){ ssIndices = unsafeToPiece <$> ["index.html", "index.htm"], ss404Handler = Just $ \_ rs -> do
-    rs $ responseFile status200 [("Content-Type", "text/html")] "dist/index.html" Nothing }
+  :<|> serveDirectoryWith (defaultWebAppSettings "dist")
+    { ssIndices = unsafeToPiece <$> ["index.html", "index.htm"]
+    , ssMaxAge = NoCache
+    , ss404Handler = Just $ \_ rs -> do
+      rs $ responseFile status200 [("Content-Type", "text/html")] "dist/index.html" Nothing 
+    }
 
 main :: IO ()
 main = do

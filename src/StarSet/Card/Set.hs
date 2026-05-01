@@ -120,7 +120,8 @@ setStyles =
       , "user-select" =: "none"
       ]
     , C.selector_ ".card *"
-      [ C.fontSize "35cqw" ]
+      [ C.fontSize "35cqw"
+      ]
     ]
   ]
 
