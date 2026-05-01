@@ -106,7 +106,7 @@ setStyles =
       [ "--card-color" =: "#7b5ea7"
       ]
     , C.selector_ ".card"
-      [ C.fontSize $ C.em 4
+      [ "container-type" =: "size"
       , C.fontFamily "SET"
       , C.width $ C.pct 100 
       , C.height $ C.pct 100
@@ -119,6 +119,8 @@ setStyles =
       , "-ms-user-select" =: "none"
       , "user-select" =: "none"
       ]
+    , C.selector_ ".card *"
+      [ C.fontSize "35cqw" ]
     ]
   ]
 
@@ -148,6 +150,12 @@ data SetProperty a where
   SetFill :: SetProperty SetFill
   SetShape :: SetProperty SetShape
   SetColor :: SetProperty SetColor
+
+instance Show (SetProperty a) where
+  show SetNumber = "number"
+  show SetFill = "fill"
+  show SetShape = "shape"
+  show SetColor = "color"
 
 getProperty :: SetProperty a -> SetCard -> a
 getProperty SetNumber = cardNumber

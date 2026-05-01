@@ -2,17 +2,20 @@
 
 module StarSet.Games.NearSet
   ( nearSet
+  , numberNearSet
+  , fillNearSet
+  , shapeNearSet
+  , colorNearSet
   ) where
 
 import StarSet.Game
 import StarSet.Card.Set
 
 import Data.List (nub, unzip4, (\\))
+import Type.Reflection
 
-import Miso (text)
+import Miso (text, toMisoString)
 import qualified Miso.Html as H
-
-data NearSet = NearSet deriving (Eq, Ord, Show)
 
 sameOrDifferent :: Eq a => [a] -> Bool
 sameOrDifferent xs = let u = length $ nub xs in u == length xs || u == 1
@@ -30,9 +33,13 @@ isNearSetOn prop (a, b, c) = any isOriginalSet $ ((a, b, ) <$> variate prop c) +
 isNearSet :: (SetCard, SetCard, SetCard) -> Bool
 isNearSet cards = isNearSetOn SetNumber cards || isNearSetOn SetFill cards || isNearSetOn SetShape cards || isNearSetOn SetColor cards
 
+data NearSet = NearSet deriving (Eq, Ord, Show)
+
 instance Game NearSet where
   type Card NearSet = SetCard
   type Collection NearSet = (SetCard, SetCard, SetCard)
+
+  name NearSet = "NearSet"
 
   deck NearSet = setDeck
   laidDown NearSet = 12
@@ -58,5 +65,47 @@ instance Game NearSet where
       ]
     ]
 
+newtype NearSetOn a = NearSetOn (SetProperty a)
+
+instance Eq (NearSetOn a) where _ == _ = True
+instance Ord (NearSetOn a) where compare _ _ = EQ
+deriving instance Show (NearSetOn a)
+
+instance (Enum a, Bounded a, Eq a, Typeable a) => Game (NearSetOn a) where
+  type Card (NearSetOn a) = SetCard
+  type Collection (NearSetOn a) = (SetCard, SetCard, SetCard)
+
+  name (NearSetOn prop) = "NearSet (" <> toMisoString (show prop) <> " only)"
+
+  deck (NearSetOn _) = setDeck
+  laidDown (NearSetOn _) = 12
+  noSetAction (NearSetOn _) = AddMore 3
+  minimumSet (NearSetOn _) = 3
+  maximumSet (NearSetOn _) = Just 3
+  makeSet (NearSetOn _) [a, b, c] = (a, b, c)
+  makeSet (NearSetOn _) _ = error "Unexpected set size"
+  isSet (NearSetOn prop) = isNearSetOn prop
+
+  styles (NearSetOn _) = setStyles
+  renderCard (NearSetOn _) = renderSetCard
+
+  rules (NearSetOn prop) = H.div_ []
+    [ H.div_ []
+      [ text "The cards have four characteristics: number of shapes (1, 2, or 3); shape fill (empty, shaded, or filled); shape (oval, diamond, or tilde); color (red, green, or blue)"
+      ]
+    , H.div_ []
+      [ text "A SET-set is a group of three cards where, for each characteristic, the three cards either all share the same trait or all have different traits."
+      ]
+    , H.div_ []
+      [ text $ toMisoString $ "A set is a group of three cards where you can variate the " ++ show prop ++ " on exactly one of the three cards in such a way that they form a SET-set."
+      ]
+    ]
+
 nearSet :: SomeGame
 nearSet = SomeGame NearSet
+
+numberNearSet, fillNearSet, shapeNearSet, colorNearSet :: SomeGame
+numberNearSet = SomeGame $ NearSetOn SetNumber
+fillNearSet = SomeGame $ NearSetOn SetFill
+shapeNearSet = SomeGame $ NearSetOn SetShape
+colorNearSet = SomeGame $ NearSetOn SetColor

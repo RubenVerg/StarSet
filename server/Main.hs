@@ -61,8 +61,8 @@ type WebSocketApi = "ws" :> "host" :> Capture "game" String :> WebSocket
                :<|> "ws" :> "join" :> Capture "id" NanoID :> WebSocket
 
 hostServer :: ServerT ("ws" :> "host" :> Capture "game" String :> WebSocket) AppM
-hostServer game conn = case Map.lookup game games of
-  Just (_, SomeGame g) -> do
+hostServer game conn = case lookup game games of
+  Just (SomeGame g) -> do
     ServerState{ serverRandom = r, serverGames = gs } <- ask
     liftIO $ forkPingThread conn 10
     i <- liftIO $ customNanoID defaultAlphabet 12 r
@@ -137,7 +137,7 @@ server = socketServer
     gs <- liftIO $ readTVarIO sg
     case Map.lookup i gs of
       Nothing -> pure ""
-      Just (SomeGameState (stateGame -> g)) -> case find (\(_, (_, g')) -> SomeGame g == g') $ Map.toList games of
+      Just (SomeGameState (stateGame -> g)) -> case find (\(_, g') -> SomeGame g == g') games of
         Just (k, _) -> pure k
         _ -> pure "")
   :<|> serveDirectoryWith (defaultWebAppSettings "dist"){ ssIndices = unsafeToPiece <$> ["index.html", "index.htm"], ss404Handler = Just $ \_ rs -> do

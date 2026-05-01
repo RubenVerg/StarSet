@@ -21,6 +21,8 @@ instance Game Set where
   type Card Set = SetCard
   type Collection Set = (SetCard, SetCard, SetCard)
 
+  name Set = "SET"
+
   deck Set = setDeck
   laidDown Set = 12
   noSetAction Set = AddMore 3

@@ -7,14 +7,15 @@ import StarSet.Games.Set
 import StarSet.Games.ProSet
 import StarSet.Games.NearSet
 
-import Data.Map (Map)
-import qualified Data.Map as Map
-
-games :: Map String (String, SomeGame)
-games = Map.fromList
-  [ ("set", ("SET", set))
-  , ("proSet", ("ProSet", proSet 6))
-  , ("proSet4", ("Small ProSet", proSet 4))
-  , ("7cardProSet", ("7-Card ProSet", sevenCardProSet))
-  , ("nearSet", ("NearSet", nearSet))
+games :: [(String, SomeGame)]
+games =
+  [ ("set", set)
+  , ("proSet", proSet 6)
+  , ("proSet4", proSet 4)
+  , ("7cardProSet", sevenCardProSet)
+  , ("nearSet", nearSet)
+  , ("numberNearSet", numberNearSet)
+  , ("fillNearSet", fillNearSet)
+  , ("shapeNearSet", shapeNearSet)
+  , ("colorNearSet", colorNearSet)
   ]

@@ -59,7 +59,7 @@ commonStyles =
       [ "--dot-color" =: "#b9b9b9"
       ]
     , C.selector_ ".card"
-      [ C.fontSize $ C.em 4
+      [ "container-type" =: "size"
       , C.fontFamily "ProSet"
       , C.width $ C.pct 100 
       , C.height $ C.pct 100
@@ -72,6 +72,9 @@ commonStyles =
       , "-moz-user-select" =: "none"
       , "-ms-user-select" =: "none"
       , "user-select" =: "none"
+      ]
+    , C.selector_ ".card *"
+      [ C.fontSize "35cqw"
       ]
     ]
   ]
@@ -88,6 +91,9 @@ data SevenCardProSet = SevenCardProSet deriving (Eq, Ord, Show)
 instance Game ProSet where
   type Card ProSet = Natural
   type Collection ProSet = (Natural, Natural, Natural)
+
+  name (ProSet 6) = "ProSet"
+  name (ProSet n) = "ProSet (" <> toMisoString (show n) <> " dots)"
 
   deck (ProSet n) = [1..2 ^ n - 1]
   laidDown (ProSet _) = 12
@@ -114,6 +120,8 @@ instance Game SevenCardProSet where
   type Card SevenCardProSet = Natural
   type Collection SevenCardProSet = [Natural]
 
+  name SevenCardProSet = "7-card ProSet"
+
   deck SevenCardProSet = [1..2 ^ (6 :: Int) - 1]
   laidDown SevenCardProSet = 7
   noSetAction SevenCardProSet = Redeal
@@ -133,7 +141,6 @@ instance Game SevenCardProSet where
       [ text "A set is a group of at least three cards where, for each dot, an even number of cards has that dot filled."
       ]
     ]
-
 
 proSet :: Natural -> SomeGame
 proSet = SomeGame . ProSet

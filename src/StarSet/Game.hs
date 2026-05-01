@@ -10,7 +10,7 @@ import Numeric.Natural
 import Type.Reflection
 
 import Data.Set (Set)
-import Miso (View, CSS)
+import Miso (View, CSS, MisoString)
 import Miso.JSON
 
 data NoSetAction
@@ -20,6 +20,8 @@ data NoSetAction
 class (Typeable g, Eq g, Ord g, Eq (Card g), Ord (Card g), Show g, Show (Card g), FromJSON (Card g), ToJSON (Card g)) => Game g where
   type Card g
   type Collection g
+
+  name :: g -> MisoString
   
   deck :: g -> Set (Card g)
   laidDown :: g -> Natural
