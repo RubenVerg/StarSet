@@ -1,0 +1,64 @@
+{-# LANGUAGE TypeFamilies, OverloadedStrings, OverloadedLists #-}
+
+module StarSet.Games.SuperSet
+  ( superSet
+  ) where
+
+import StarSet.Game
+import StarSet.Card.Set
+
+import Data.List (find, (\\))
+import Data.Maybe
+
+import Miso (text)
+import qualified Miso.Html as H
+import Combinatorics (variate)
+
+data SuperSet = SuperSet deriving (Eq, Ord, Show)
+
+thirdCard :: SetCard -> SetCard -> SetCard
+thirdCard (SetCard n1 f1 s1 c1) (SetCard n2 f2 s2 c2) = let
+  n = if n1 == n2 then n1 else fromJust $ find ((&&) <$> (/= n1) <*> (/= n2)) ([minBound..maxBound] :: [SetNumber])
+  f = if f1 == f2 then f1 else fromJust $ find ((&&) <$> (/= f1) <*> (/= f2)) ([minBound..maxBound] :: [SetFill])
+  s = if s1 == s2 then s1 else fromJust $ find ((&&) <$> (/= s1) <*> (/= s2)) ([minBound..maxBound] :: [SetShape])
+  c = if c1 == c2 then c1 else fromJust $ find ((&&) <$> (/= c1) <*> (/= c2)) ([minBound..maxBound] :: [SetColor])
+  in SetCard n f s c
+
+instance Game SuperSet where
+  type Card SuperSet = SetCard
+  type Collection SuperSet = (SetCard, SetCard, SetCard, SetCard)
+
+  name SuperSet = "SuperSet"
+
+  deck SuperSet = setDeck
+  laidDown SuperSet = 9
+  noSetAction SuperSet = AddMore 3
+  minimumSet SuperSet = 4
+  maximumSet SuperSet = Just 4
+  makeSet SuperSet [a, b, c, d] = (a, b, c, d)
+  makeSet SuperSet _ = error "Unexpected set size"
+  isSet SuperSet (a, b, c, d) = any (\case
+    [x, y] -> case [a, b, c, d] \\ [x, y] of
+      [u, v] -> thirdCard x y == thirdCard u v
+      _ -> False
+    _ -> False) $ variate 2 [a, b, c, d]
+
+  styles SuperSet = setStyles
+  renderCard SuperSet = renderSetCard
+
+  rules SuperSet = H.div_ []
+    [ H.div_ []
+      [ text "The cards have four characteristics: number of shapes (1, 2, or 3); shape fill (empty, shaded, or filled); shape (oval, diamond, or tilde); color (red, green, or blue)."
+      ]
+    , H.div_ []
+      [ text "A SET-set is a group of three cards where, for each characteristic, the three cards either all share the same trait or all have different traits."
+      ]
+    , H.div_ []
+      [ text "Each group of two cards has the property that there exists exactly one other card in the deck that forms a SET-set with them."
+      ]
+    , H.div_ []
+      [ text "A set is a group of four cards that can be split into two pairs whose third card to complete the SET-set is the same."]
+    ]
+
+superSet :: SomeGame
+superSet = SomeGame SuperSet

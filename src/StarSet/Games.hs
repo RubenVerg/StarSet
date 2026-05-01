@@ -6,6 +6,7 @@ import StarSet.Game
 import StarSet.Games.Set
 import StarSet.Games.ProSet
 import StarSet.Games.NearSet
+import StarSet.Games.SuperSet
 
 games :: [(String, SomeGame)]
 games =
@@ -18,4 +19,5 @@ games =
   , ("fillNearSet", fillNearSet)
   , ("shapeNearSet", shapeNearSet)
   , ("colorNearSet", colorNearSet)
+  , ("superSet", superSet)
   ]

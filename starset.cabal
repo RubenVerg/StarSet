@@ -17,6 +17,7 @@ library
                  , StarSet.Games.NearSet
                  , StarSet.Games.ProSet
                  , StarSet.Games.Set
+                 , StarSet.Games.SuperSet
                  , StarSet.Message
                  , StarSet.Play
   build-depends: base
