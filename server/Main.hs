@@ -21,6 +21,7 @@ import Servant.API.WebSocket
 import Network.HTTP.Types
 import Network.Wai
 import Network.Wai.Handler.Warp (run)
+import Network.Wai.Middleware.Gzip
 import Network.WebSockets hiding (send)
 import Network.WebSockets.Connection (pingThread)
 import Network.Wai.Application.Static
@@ -165,4 +166,6 @@ main = do
   gams <- newTVarIO Map.empty
   let st = ServerState random gams
   putStrLn "Serving on http://localhost:9050"
-  run 9050 $ serve api $ hoistServer api (`runReaderT` st) server
+  run 9050 $ gzip defaultGzipSettings
+    { gzipCheckMime = (== "application/wasm")
+    , gzipFiles = GzipCompress } $ serve api $ hoistServer api (`runReaderT` st) server

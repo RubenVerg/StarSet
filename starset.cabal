@@ -61,6 +61,7 @@ executable starset-server
                , http-types
                , warp
                , wai-app-static
+               , wai-extra
                , servant-websockets ^>=2.0.0
                , websockets
                , text
