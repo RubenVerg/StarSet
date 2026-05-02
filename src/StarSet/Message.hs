@@ -29,7 +29,7 @@ deriving via (ViaAeson (C2SMessage g)) instance Game g => Miso.ToJSON (C2SMessag
 
 data S2CMessage g
   = S2CSetDeck Natural [Card g]
-  | S2CInfo { infoStart :: Double, infoCode :: MisoString }
+  | S2CInfo { infoStart :: Double, infoCode :: MisoString, infoPlayers :: Natural }
   | S2CGameOver { overTime :: Double, overYours :: Natural, overOthers :: [Natural] }
   | S2CAchieve { achieve :: Set Achievement }
   deriving (Generic)

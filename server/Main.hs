@@ -12,6 +12,7 @@ import Numeric.Natural
 import Control.Exception (catch)
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Concurrent
 import Data.List
 import Data.Maybe
 
@@ -21,6 +22,7 @@ import Network.HTTP.Types
 import Network.Wai
 import Network.Wai.Handler.Warp (run)
 import Network.WebSockets hiding (send)
+import Network.WebSockets.Connection (pingThread)
 import Network.Wai.Application.Static
 import WaiAppStatic.Types
 import qualified Data.Text.Encoding as T
@@ -65,7 +67,7 @@ hostServer :: ServerT ("ws" :> "host" :> Capture "game" String :> WebSocket) App
 hostServer game conn = case lookup game games of
   Just (SomeGame g) -> do
     ServerState{ serverRandom = r, serverGames = gs } <- ask
-    liftIO $ forkPingThread conn 10
+    liftIO $ void $ forkIO $ pingThread conn 10 (pure ())
     i <- liftIO $ customNanoID defaultAlphabet 12 r
     d <- liftIO $ V.toList <$> uniformShuffle (V.fromList $ Set.toList $ deck g) r
     n <- liftIO $ (* 1000) . realToFrac <$> getPOSIXTime
@@ -78,7 +80,7 @@ hostServer game conn = case lookup game games of
 joinServer :: ServerT ("ws" :> "join" :> Capture "id" NanoID :> WebSocket) AppM
 joinServer i conn = do
   ServerState{ serverRandom = r, serverGames = gs } <- ask
-  liftIO $ forkPingThread conn 10
+  liftIO $ void $ forkIO $ pingThread conn 10 (pure ())
   ci <- liftIO $ customNanoID defaultAlphabet 12 r
   liftIO $ atomically $ readTVar gs >>= writeTVar gs . Map.update (\(SomeGameState g) -> Just $ SomeGameState g{ stateConnections = Map.insert ci (conn, 0) $ stateConnections g }) i
   gameServer i ci conn
@@ -87,22 +89,29 @@ send :: (MonadIO m, Game g) => Connection -> S2CMessage g -> m ()
 send conn msg = liftIO $ sendTextData conn (encode msg) `catch` (\(_ :: ConnectionException) -> pure ())
 
 gameServer :: NanoID -> NanoID -> Connection -> AppM ()
-gameServer i@(NanoID (T.decodeUtf8 -> is)) ci conn = forever $ do
-  gs <- asks serverGames
-  dt <- liftIO $ receiveData conn
-  sg <- liftIO $ Map.lookup i <$> readTVarIO gs
-  case sg of
-    Nothing -> fail $ "Unknown game! " <> show i
-    Just (SomeGameState @g gt@GameState{ stateDeck = d, stateStart = n, stateShowing = s }) -> do
-      let msg = decode @(C2SMessage g) dt
-      case msg of
-        Just (C2SSelection sel) -> do
-          gt' <- checkForSet ci gt sel
-          liftIO $ atomically $ readTVar gs >>= writeTVar gs . Map.insert i (SomeGameState gt')
-          forM_ (map fst $ Map.elems $ stateConnections gt') $ flip send $ S2CSetDeck @g (stateShowing gt') (stateDeck gt')
-        Just C2SGetDeck -> send conn $ S2CSetDeck @g s d
-        Just C2SGetInfo -> send conn $ S2CInfo @g n is
-        Nothing -> pure ()
+gameServer i@(NanoID (T.decodeUtf8 -> is)) ci conn = do
+  do
+    gs <- asks serverGames
+    sg <- liftIO $ Map.lookup i <$> readTVarIO gs
+    case sg of
+      Nothing -> pure ()
+      Just (SomeGameState @g GameState{ stateStart = n, stateConnections = conns }) -> forM_ (map fst $ Map.elems conns) $ flip send $ S2CInfo @g n is $ fromIntegral $ Map.size conns
+  forever $ do
+    gs <- asks serverGames
+    dt <- liftIO $ receiveData conn
+    sg <- liftIO $ Map.lookup i <$> readTVarIO gs
+    case sg of
+      Nothing -> fail $ "Unknown game! " <> show i
+      Just (SomeGameState @g gt@GameState{ stateDeck = d, stateStart = n, stateShowing = s, stateConnections = conns }) -> do
+        let msg = decode @(C2SMessage g) dt
+        case msg of
+          Just (C2SSelection sel) -> do
+            gt' <- checkForSet ci gt sel
+            liftIO $ atomically $ readTVar gs >>= writeTVar gs . Map.insert i (SomeGameState gt')
+            forM_ (map fst $ Map.elems $ stateConnections gt') $ flip send $ S2CSetDeck @g (stateShowing gt') (stateDeck gt')
+          Just C2SGetDeck -> send conn $ S2CSetDeck @g s d
+          Just C2SGetInfo -> send conn $ S2CInfo @g n is $ fromIntegral $ Map.size conns
+          Nothing -> pure ()
 
 checkForSet :: forall g. Game g => NanoID -> GameState g -> [Card g] -> AppM (GameState g)
 checkForSet ci gt@GameState{ stateGame = g, stateDeck = d, stateShowing = s, stateConnections = conns, stateStart = st } sel = case play g s d sel of

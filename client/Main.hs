@@ -39,6 +39,7 @@ foreign export javascript "hs_start" main :: IO ()
 
 type Code online = If online (Maybe MisoString) ()
 type Score online = If online (Natural, [Natural]) ()
+type Players online = If online Natural ()
 
 data GameState (online :: Bool) g
   = Playing
@@ -50,6 +51,7 @@ data GameState (online :: Bool) g
     , stateCode :: Code online
     , stateConfig :: Config
     , stateShowingRules :: Bool
+    , statePlayers :: Players online
     }
   | Finished
     { stateGame :: g
@@ -59,6 +61,7 @@ data GameState (online :: Bool) g
     , stateConfig :: Config
     , stateScore :: Score online
     , stateShowingRules :: Bool
+    , statePlayers :: Players online
     }
 
 deriving instance Game g => Eq (GameState True g)
@@ -188,7 +191,7 @@ checkForSet :: Game g => Effect parent (GameState False g) (GameEvent False g)
 checkForSet = do
   state <- get
   case state of
-    Playing{ stateGame = g, stateDeck = d, stateShowing = s, stateSelected = sel, stateStart = st, stateCode = cd, stateConfig = cfg, stateShowingRules = sr } -> case play g s d sel of
+    Playing{ stateGame = g, stateDeck = d, stateShowing = s, stateSelected = sel, stateStart = st, stateCode = cd, stateConfig = cfg, stateShowingRules = sr, statePlayers = pl } -> case play g s d sel of
       None -> pure ()
       NoMoreSets as -> do
         issue $ Achieve as
@@ -196,10 +199,10 @@ checkForSet = do
           end <- Date.new >>= Date.getTime
           pure $ Finish d $ realToFrac $ (end - st) / 1000
       FoundSet as d' -> do
-        put Playing{ stateGame = g, stateDeck = d', stateShowing = s, stateSelected = [], stateStart = st, stateCode = cd, stateConfig = cfg, stateShowingRules = sr } >> checkForSet
+        put Playing{ stateGame = g, stateDeck = d', stateShowing = s, stateSelected = [], stateStart = st, stateCode = cd, stateConfig = cfg, stateShowingRules = sr, statePlayers = pl } >> checkForSet
         issue $ Achieve as
-      Redealt d' -> put Playing{ stateGame = g, stateDeck = d', stateShowing = s, stateSelected = [], stateStart = st, stateCode = cd, stateConfig = cfg, stateShowingRules = sr } >> checkForSet
-      AddedMore n -> put Playing{ stateGame = g, stateDeck = d, stateShowing = s + n, stateSelected = sel, stateStart = st, stateCode = cd, stateConfig = cfg, stateShowingRules = sr } >> checkForSet
+      Redealt d' -> put Playing{ stateGame = g, stateDeck = d', stateShowing = s, stateSelected = [], stateStart = st, stateCode = cd, stateConfig = cfg, stateShowingRules = sr, statePlayers = pl } >> checkForSet
+      AddedMore n -> put Playing{ stateGame = g, stateDeck = d, stateShowing = s + n, stateSelected = sel, stateStart = st, stateCode = cd, stateConfig = cfg, stateShowingRules = sr, statePlayers = pl } >> checkForSet
     _ -> pure ()
 
 class Game g => OnlineSwitches (online :: Bool) g where
@@ -208,8 +211,9 @@ class Game g => OnlineSwitches (online :: Bool) g where
   changeSelected :: [Card g] -> Effect parent (GameState online g) (GameEvent online g)
   wrapCode :: MisoString -> Code online
   nullCode :: Code online
-  displayCode :: Code online -> [View model action]
+  displayOnline :: Code online -> Players online -> [View model action]
   displayScore :: Score online -> View model action
+  onePlayer :: Players online
 
 instance Game g => OnlineSwitches True g where
   handleStartup = do
@@ -221,9 +225,12 @@ instance Game g => OnlineSwitches True g where
   changeSelected sel = broadcast $ sendC2SRequest $ C2SSelection @g sel
   wrapCode = Just
   nullCode = Nothing
-  displayCode Nothing = []
-  displayCode (Just code) =
-    [ text " "
+  displayOnline Nothing _ = []
+  displayOnline (Just code) players =
+    [ icon "people"
+    , text " "
+    , text $ toMisoString $ show players
+    , text " "
     , icon "code-slash"
     , text " "
     , H.code_ [] [text code]
@@ -235,6 +242,7 @@ instance Game g => OnlineSwitches True g where
       , H.ul_ [] $ H.li_ [] . pure . text . toMisoString . show <$> o
       ]
     ]
+  onePlayer = 1
 
 instance Game g => OnlineSwitches False g where
   handleStartup = checkForSet
@@ -242,8 +250,9 @@ instance Game g => OnlineSwitches False g where
   changeSelected _ = checkForSet
   wrapCode = const ()
   nullCode = ()
-  displayCode = const []
+  displayOnline = const $ const []
   displayScore = const $ H.span_ [] []
+  onePlayer = ()
 
 gameHandle :: forall online g parent. (OnlineSwitches online g, Game g) => GameEvent online g -> Effect parent (GameState online g) (GameEvent online g)
 gameHandle Startup = handleStartup
@@ -256,14 +265,14 @@ gameHandle (Click card) = do
       put gs{ stateSelected = sel' }
       changeSelected sel'
     _ -> pure ()
-gameHandle (Finish d time) = modify $ \s -> Finished{ stateGame = stateGame s, stateDeck = d, stateTime = time, stateCode = stateCode s, stateConfig = stateConfig s, stateScore = (), stateShowingRules = stateShowingRules s }
+gameHandle (Finish d time) = modify $ \s -> Finished{ stateGame = stateGame s, stateDeck = d, stateTime = time, stateCode = stateCode s, stateConfig = stateConfig s, stateScore = (), stateShowingRules = stateShowingRules s, statePlayers = statePlayers s }
 gameHandle (GotS2C (S2CSetDeck s' d')) = modify $ \case
   st@Playing{ stateSelected = sel } -> st{ stateDeck = d', stateShowing = s', stateSelected = filter (`elem` genericTake s' d') sel }
   st -> st{ stateDeck = d' }
-gameHandle (GotS2C (S2CInfo start code)) = modify $ \case
-  s@Playing{} -> s{ stateStart = start, stateCode = wrapCode @online @g code }
-  s -> s{ stateCode = wrapCode @online @g code }
-gameHandle (GotS2C (S2CGameOver t y o)) = modify $ \s -> Finished{ stateGame = stateGame s, stateDeck = stateDeck s, stateTime = realToFrac $ t / 1000, stateCode = stateCode s, stateConfig = stateConfig s, stateScore = (y, o), stateShowingRules = stateShowingRules s }
+gameHandle (GotS2C (S2CInfo start code players)) = modify $ \case
+  s@Playing{} -> s{ stateStart = start, stateCode = wrapCode @online @g code, statePlayers = players }
+  s -> s{ stateCode = wrapCode @online @g code, statePlayers = players }
+gameHandle (GotS2C (S2CGameOver t y o)) = modify $ \s -> Finished{ stateGame = stateGame s, stateDeck = stateDeck s, stateTime = realToFrac $ t / 1000, stateCode = stateCode s, stateConfig = stateConfig s, stateScore = (y, o), stateShowingRules = stateShowingRules s, statePlayers = statePlayers s }
 gameHandle (GotS2C (S2CAchieve achs)) = issue $ Achieve achs
 gameHandle (Achieve achs) = sync_ $ do
   s <- decode . fromMaybe "[]" <$> getLocalStorage "achievements"
@@ -275,7 +284,7 @@ displayTime :: DiffTime -> View model action
 displayTime (floor -> secs) = text $ toMisoString $ show (secs `div` 60) ++ ":" ++ reverse (take 2 $ reverse $ '0' : show (secs `mod` 60 :: Integer))
 
 gameRender :: forall online g. (OnlineSwitches online g, Game g) => GameState online g -> View (GameState online g) (GameEvent online g)
-gameRender Playing{ stateGame = g, stateDeck = d, stateShowing = s, stateSelected = selected, stateCode = cd, stateConfig = Config{ configHints = doHint }, stateShowingRules = sr } = let
+gameRender Playing{ stateGame = g, stateDeck = d, stateShowing = s, stateSelected = selected, stateCode = cd, stateConfig = Config{ configHints = doHint }, stateShowingRules = sr, statePlayers = pl } = let
   sh = genericTake s d
   hinted = fromMaybe [] $ hint g $ genericTake s d
   rd = (\card -> H.div_ [H.onClick $ Click card, P.classes_ $ ["__card"] ++ ["__selected" | card `elem` selected] ++ ["__hint" | card `elem` hinted && doHint] ] [renderCard g card]) <$> sh
@@ -295,7 +304,7 @@ gameRender Playing{ stateGame = g, stateDeck = d, stateShowing = s, stateSelecte
         , text " "
         , H.span_ [H.onClick ShowRules] [icon "info-circle"]
         ]
-      , H.span_ [] $ displayCode @online @g cd
+      , H.span_ [] $ displayOnline @online @g cd pl
       ]
     , H.main_ [P.classes_ ["__cards"]] [H.div_ [] rd]
     , if sr then H.dialog_ [P.open_ True, P.classes_ ["__rules"]] [H.h3_ []
@@ -303,7 +312,7 @@ gameRender Playing{ stateGame = g, stateDeck = d, stateShowing = s, stateSelecte
       , H.span_ [H.onClick HideRules] [icon "x"]
       ], rules g] else text ""
     ]
-gameRender Finished{ stateGame = g, stateDeck = d, stateTime = time, stateCode = cd, stateScore = sc } = let
+gameRender Finished{ stateGame = g, stateDeck = d, stateTime = time, stateCode = cd, stateScore = sc, statePlayers = pl } = let
   rd = (\card -> H.div_ [H.onClick $ Click card, P.classes_ ["__card"]] [renderCard g card]) <$> d
   in H.div_ [P.classes_ ["__container"]]
     [ H.header_ [P.classes_ ["__header"]]
@@ -321,7 +330,7 @@ gameRender Finished{ stateGame = g, stateDeck = d, stateTime = time, stateCode =
         , text " "
         , H.span_ [H.onClick ShowRules] [icon "info-circle"]
         ]
-      , H.span_ [] $ displayCode @online @g cd
+      , H.span_ [] $ displayOnline @online @g cd pl
       ]
     , H.main_ [P.classes_ ["__cards"]] [H.div_ [] rd]
     , H.div_ [P.classes_ ["__cover"]] []
@@ -333,7 +342,7 @@ gameRender Finished{ stateGame = g, stateDeck = d, stateTime = time, stateCode =
     ]
 
 gameComponent :: forall (online :: Bool) g parent. (OnlineSwitches online g, Game g) => Config -> Double -> g -> [Card g] -> Component parent (GameState online g) (GameEvent online g)
-gameComponent cfg st g d = (component Playing{ stateGame = g, stateDeck = d, stateShowing = laidDown g, stateSelected = [], stateStart = st, stateCode = nullCode @online @g, stateConfig = cfg, stateShowingRules = False } gameHandle gameRender)
+gameComponent cfg st g d = (component Playing{ stateGame = g, stateDeck = d, stateShowing = laidDown g, stateSelected = [], stateStart = st, stateCode = nullCode @online @g, stateConfig = cfg, stateShowingRules = False, statePlayers = onePlayer @online @g } gameHandle gameRender)
   { styles = StarSet.Game.styles g
   , mount = Just Startup
   , mailbox = makeMailbox @online @g
