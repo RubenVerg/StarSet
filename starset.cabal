@@ -14,9 +14,11 @@ library
   exposed-modules: StarSet.Card.Set
                  , StarSet.Game
                  , StarSet.Games
+                 , StarSet.Games.EvenQuads
                  , StarSet.Games.NearSet
                  , StarSet.Games.ProSet
                  , StarSet.Games.Set
+                 , StarSet.Games.Stun
                  , StarSet.Games.SuperSet
                  , StarSet.Message
                  , StarSet.Play
