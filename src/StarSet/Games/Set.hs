@@ -1,18 +1,21 @@
-{-# LANGUAGE TypeFamilies, OverloadedStrings, OverloadedLists #-}
+{-# LANGUAGE TypeFamilies, OverloadedStrings, OverloadedLists, DerivingVia #-}
 
 module StarSet.Games.Set
   ( set
   ) where
 
+import StarSet.Util.JSON
 import StarSet.Game
 import StarSet.Card.Set
 
 import Data.List (nub, unzip4)
+import GHC.Generics
 
 import Miso (text)
 import qualified Miso.Html as H
 import qualified Data.Set as Set
-import Miso.JSON
+import qualified Miso.JSON as Miso
+import qualified Data.Aeson as Aeson
 
 data Set = Set deriving (Eq, Ord, Show)
 
@@ -58,16 +61,8 @@ instance Game Set where
 data SetAchievement
   = Complete
   | ThreeOfAKind
-  deriving (Eq, Ord)
-
-instance FromJSON SetAchievement where
-  parseJSON (String "complete") = pure Complete
-  parseJSON (String "three-of-a-kind") = pure ThreeOfAKind
-  parseJSON _ = fail "Invalid SET achievement!"
-
-instance ToJSON SetAchievement where
-  toJSON Complete = String "complete"
-  toJSON ThreeOfAKind = String "three-of-a-kind"
+  deriving (Eq, Ord, Generic)
+  deriving (Miso.FromJSON, Miso.ToJSON, Aeson.FromJSON, Aeson.ToJSON) via (ViaAeson SetAchievement)
 
 instance Named SetAchievement where
   name Complete = "Complete a game of SET"

@@ -20,11 +20,14 @@ library
                  , StarSet.Games.SuperSet
                  , StarSet.Message
                  , StarSet.Play
+                 , StarSet.Util.JSON
   build-depends: base
                , miso
                , text
                , containers ^>=0.7
                , combinatorial ^>=0.1.1
+               , aeson ^>=2.2.4.1
+               , vector
 
 executable starset-client
   ghc-options: -Wall

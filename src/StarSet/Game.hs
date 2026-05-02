@@ -1,16 +1,17 @@
-{-# LANGUAGE TypeFamilies, OverloadedStrings, MagicHash, ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
+{-# LANGUAGE TypeFamilies, OverloadedStrings, ViewPatterns, DerivingVia, OverloadedLists #-}
 
 module StarSet.Game
   ( Named(..)
   , Game(..)
   , NoSetAction(..)
   , SomeGame(..)
+  , S(..)
   , Achievement(..)
   , AchievementLike(..)
   ) where
 
 import {-# SOURCE #-} StarSet.Games
+import StarSet.Util.JSON
 
 import Numeric.Natural
 import Type.Reflection
@@ -18,11 +19,13 @@ import Type.Reflection.Unsafe
 import Data.Void
 import Data.Maybe
 import Data.List
-import GHC.Base (dataToTag#, Int(I#))
+import GHC.Generics (Generic)
 
 import Data.Set (Set)
 import Miso (View, CSS, MisoString, fromMisoString, toMisoString)
-import Miso.JSON
+import qualified Miso.JSON as Miso
+import qualified Data.Aeson as Aeson
+import qualified Data.Text as T
 
 data NoSetAction
   = Redeal
@@ -79,48 +82,49 @@ class (Ord a, Named a, FromJSON a, ToJSON a) => AchievementLike a where
 
 instance Named Void where name = absurd
 
-instance FromJSON Void where parseJSON = const $ fail "parseJSON @Void"
-
-instance ToJSON Void where toJSON = absurd
-
 instance AchievementLike Void where description = absurd
 
-data Achievement where
-  CompleteGame :: Achievement
-  FindSet :: Achievement
-  Specific :: Game g => g -> SpecificAchievement g -> Achievement
+data S where S :: Game g => g -> SpecificAchievement g -> S
 
-instance Eq Achievement where
-  (Specific @g1 g1 a1) == (Specific @g2 g2 a2) = case eqTypeRep (typeRep @g1) (typeRep @g2) of
+instance Eq S where
+  (S @g1 g1 a1) == (S @g2 g2 a2) = case eqTypeRep (typeRep @g1) (typeRep @g2) of
     Just HRefl -> g1 == g2 && a1 == a2
     Nothing -> False
-  x == y = I# (dataToTag# x) == I# (dataToTag# y)
 
-instance Ord Achievement where
-  (Specific @g1 g1 a1) `compare` (Specific @g2 g2 a2) = case eqTypeRep (typeRep @g1) (typeRep @g2) of
+instance Ord S where
+  (S @g1 g1 a1) `compare` (S @g2 g2 a2) = case eqTypeRep (typeRep @g1) (typeRep @g2) of
     Just HRefl -> g1 `compare` g2 <> a1 `compare` a2
     Nothing -> typeRepFingerprint (typeRep @g1) `compare` typeRepFingerprint (typeRep @g2)
-  x `compare` y = I# (dataToTag# x) `compare` I# (dataToTag# y)
+
+instance Miso.FromJSON S where
+  parseJSON (Miso.Array [Miso.String (flip lookup games . fromMisoString -> Just (SomeGame g)), specific]) = S g <$> Miso.parseJSON specific
+  parseJSON _ = fail "Invalid achievement!"
+
+instance Miso.ToJSON S where
+  toJSON (S g specific) = Miso.Array [Miso.String $ toMisoString $ fst $ fromJust $ find ((== SomeGame g) . snd) games, Miso.toJSON specific]
+
+instance Aeson.FromJSON S where
+  parseJSON (Aeson.Array [Aeson.String (flip lookup games . T.unpack -> Just (SomeGame g)), specific]) = S g <$> Aeson.parseJSON specific
+  parseJSON _ = fail "Invalid achievement!"
+
+instance Aeson.ToJSON S where
+  toJSON (S g specific) = Aeson.Array [Aeson.String $ T.pack $ fst $ fromJust $ find ((== SomeGame g) . snd) games, Aeson.toJSON specific]
+
+data Achievement
+  = CompleteGame
+  | FindSet
+  | Specific S
+  deriving (Eq, Ord, Generic)
+  deriving (Miso.FromJSON, Miso.ToJSON, Aeson.FromJSON, Aeson.ToJSON) via (ViaAeson Achievement)
 
 instance Named Achievement where
   name CompleteGame = "Complete any game"
   name FindSet = "Find any set"
-  name (Specific _ ach) = name ach
-
-instance FromJSON Achievement where
-  parseJSON (String "complete-game") = pure CompleteGame
-  parseJSON (String "find-set") = pure FindSet
-  parseJSON (Array [String (flip lookup games . fromMisoString -> Just (SomeGame g)), specific]) = Specific g <$> parseJSON specific
-  parseJSON _ = fail "Invalid achievement!"
-
-instance ToJSON Achievement where
-  toJSON CompleteGame = String "complete-game"
-  toJSON FindSet = String "find-set"
-  toJSON (Specific g specific) = Array [String $ toMisoString $ fst $ fromJust $ find ((== SomeGame g) . snd) games, toJSON specific]
+  name (Specific (S _ ach)) = name ach
 
 instance AchievementLike Achievement where
   description CompleteGame = []
   description FindSet = []
-  description (Specific _ ach) = description ach
+  description (Specific (S _ ach)) = description ach
 
 instance Show Achievement where show = fromMisoString . name

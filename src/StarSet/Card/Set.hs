@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveAnyClass, OverloadedStrings #-}
+{-# LANGUAGE DeriveAnyClass, OverloadedStrings, DerivingVia #-}
 
 module StarSet.Card.Set
   ( SetNumber(..)
@@ -14,66 +14,42 @@ module StarSet.Card.Set
   , setProperty
   ) where
 
+import StarSet.Util.JSON
+
 import Data.List
 import GHC.Generics
 
 import Miso hiding (getProperty)
-import Miso.JSON
+import qualified Miso.JSON as Miso
+import qualified Data.Aeson as Aeson
 import qualified Miso.Html as H
 import qualified Miso.Html.Property as P
 import qualified Miso.CSS as C
 import qualified Data.Set as Set
 
-data SetNumber = One | Two | Three deriving (Eq, Ord, Read, Show, Enum, Bounded)
-instance FromJSON SetNumber where
-  parseJSON (Number 1) = pure One
-  parseJSON (Number 2) = pure Two
-  parseJSON (Number 3) = pure Three
-  parseJSON _ = fail "Invalid Number"
-instance ToJSON SetNumber where
-  toJSON One = Number 1
-  toJSON Two = Number 2
-  toJSON Three = Number 3
+data SetNumber = One | Two | Three
+  deriving (Eq, Ord, Read, Show, Enum, Bounded, Generic)
+  deriving (Miso.FromJSON, Miso.ToJSON, Aeson.FromJSON, Aeson.ToJSON) via (ViaAeson SetNumber)
 
-data SetFill = Empty | Shaded | Filled deriving (Eq, Ord, Read, Show, Enum, Bounded)
-instance FromJSON SetFill where
-  parseJSON (String "empty") = pure Empty
-  parseJSON (String "shaded") = pure Shaded
-  parseJSON (String "filled") = pure Filled
-  parseJSON _ = fail "Invalid Fill"
-instance ToJSON SetFill where
-  toJSON Empty = String "empty"
-  toJSON Shaded = String "shaded"
-  toJSON Filled = String "filled"
+data SetFill = Empty | Shaded | Filled
+  deriving (Eq, Ord, Read, Show, Enum, Bounded, Generic)
+  deriving (Miso.FromJSON, Miso.ToJSON, Aeson.FromJSON, Aeson.ToJSON) via (ViaAeson SetFill)
 
-data SetShape = Diamond | Oval | Tilde deriving (Eq, Ord, Read, Show, Enum, Bounded)
-instance FromJSON SetShape where
-  parseJSON (String "diamond") = pure Diamond
-  parseJSON (String "oval") = pure Oval
-  parseJSON (String "tilde") = pure Tilde
-  parseJSON _ = fail "Invalid Shape"
-instance ToJSON SetShape where
-  toJSON Diamond = String "diamond"
-  toJSON Oval = String "oval"
-  toJSON Tilde = String "tilde"
+data SetShape = Diamond | Oval | Tilde
+  deriving (Eq, Ord, Read, Show, Enum, Bounded, Generic)
+  deriving (Miso.FromJSON, Miso.ToJSON, Aeson.FromJSON, Aeson.ToJSON) via (ViaAeson SetShape)
   
-data SetColor = Red | Green | Blue deriving (Eq, Ord, Read, Show, Enum, Bounded)
-instance FromJSON SetColor where
-  parseJSON (String "red") = pure Red
-  parseJSON (String "green") = pure Green
-  parseJSON (String "blue") = pure Blue
-  parseJSON _ = fail "Invalid Color"
-instance ToJSON SetColor where
-  toJSON Red = String "red"
-  toJSON Green = String "green"
-  toJSON Blue = String "blue"
+data SetColor = Red | Green | Blue
+  deriving (Eq, Ord, Read, Show, Enum, Bounded, Generic)
+  deriving (Miso.FromJSON, Miso.ToJSON, Aeson.FromJSON, Aeson.ToJSON) via (ViaAeson SetColor)
 
 data SetCard = SetCard
   { cardNumber :: SetNumber
   , cardFill :: SetFill
   , cardShape :: SetShape
   , cardColor :: SetColor
-  } deriving (Eq, Ord, Read, Show, Generic, FromJSON, ToJSON)
+  } deriving (Eq, Ord, Read, Show, Generic)
+  deriving (Miso.FromJSON, Miso.ToJSON, Aeson.FromJSON, Aeson.ToJSON) via (ViaAeson SetCard)
 
 setDeck :: Set.Set SetCard
 setDeck = Set.fromList $ SetCard <$> [minBound..maxBound] <*> [minBound..maxBound] <*> [minBound..maxBound] <*> [minBound..maxBound]
