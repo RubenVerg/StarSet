@@ -61,16 +61,18 @@ instance Game Set where
 data SetAchievement
   = Complete
   | ThreeOfAKind
-  deriving (Eq, Ord, Generic)
+  deriving (Eq, Ord, Generic, Enum, Bounded)
   deriving (Miso.FromJSON, Miso.ToJSON, Aeson.FromJSON, Aeson.ToJSON) via (ViaAeson SetAchievement)
 
 instance Named SetAchievement where
-  name Complete = "Complete a game of SET"
+  name Complete = "I'm all set"
   name ThreeOfAKind = "Three of a kind"
 
 instance AchievementLike SetAchievement where
-  description Complete = []
+  description Complete = ["Complete a game of SET."]
   description ThreeOfAKind = ["In a game of SET, find a set where at least one trait is the same among all three cards."]
+
+  enumerate = [minBound..maxBound]
 
 set :: SomeGame
 set = SomeGame Set

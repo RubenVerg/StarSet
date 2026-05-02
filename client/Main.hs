@@ -16,6 +16,7 @@ import Data.IORef
 import Type.Reflection
 import GHC.Generics
 import Data.Type.Bool
+import Data.Ord
 
 import Miso hiding (set)
 import qualified Miso.Html as H
@@ -167,6 +168,9 @@ styleSheet = C.sheet_
     [ C.display "inline-block"
     , C.width "calc(100% / 3)"
     , C.textAlign "right"
+    ]
+  , C.selector_ ".__achievements .__got"
+    [ C.color C.green
     ]
   , C.selector_ "body"
     [ C.margin "0"
@@ -475,7 +479,13 @@ render (BeginState _ code k) = H.div_ []
   , H.button_ [H.onClick Connect] [text "Connect"]
   , H.button_ [H.onClick Achievements] [text "Achievements"]
   ]
-render (AchievementsState _ achs) = H.div_ [] [H.dl_ [] $ concatMap (\ach -> H.dt_ [] [text $ name ach] : (H.dd_ [] . pure . text <$> description ach)) $ Set.toAscList achs]
+render (AchievementsState _ achs) = H.div_ [] [H.dl_ [P.classes_ ["__achievements"]] $ concatMap (\ach ->
+  H.dt_ [P.classes_ ["__got" | ach `Set.member` achs]]
+    [ icon $ if ach `Set.member` achs then "check-square" else "square"
+    , text " "
+    , text $ name ach
+    ] :
+  (H.dd_ [] . pure . text <$> description ach)) $ sortOn (Down . (`Set.member` achs)) enumerate]
 render (LocalState c st g d) = mount_ $ gameComponent @False c st g d
 render (OnlineState c _ st g d) = mount_ $ gameComponent @True c st g d
 

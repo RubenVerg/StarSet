@@ -1,18 +1,21 @@
-{-# LANGUAGE TypeFamilies, OverloadedStrings, OverloadedLists #-}
+{-# LANGUAGE TypeFamilies, OverloadedStrings, OverloadedLists, DerivingVia #-}
 
 module StarSet.Games.SuperSet
   ( superSet
   ) where
 
+import StarSet.Util.JSON
 import StarSet.Game
 import StarSet.Card.Set
 
 import Data.List (find, (\\))
 import Data.Maybe
-import Data.Void
+import GHC.Generics
 
 import Miso (text)
 import qualified Miso.Html as H
+import qualified Miso.JSON as Miso
+import qualified Data.Aeson as Aeson
 import Combinatorics (variate)
 
 data SuperSet = SuperSet deriving (Eq, Ord, Show)
@@ -30,7 +33,7 @@ instance Named SuperSet where name SuperSet = "SuperSet"
 instance Game SuperSet where
   type Card SuperSet = SetCard
   type Collection SuperSet = (SetCard, SetCard, SetCard, SetCard)
-  type SpecificAchievement SuperSet = Void
+  type SpecificAchievement SuperSet = SuperSetAchievement
 
   achievements SuperSet = []
   completeAchievement SuperSet = Nothing
@@ -65,6 +68,19 @@ instance Game SuperSet where
     , H.div_ []
       [ text "A set is a group of four cards that can be split into two pairs whose third card to complete the SET-set is the same."]
     ]
+
+data SuperSetAchievement
+  = Complete
+  deriving (Eq, Ord, Generic, Enum, Bounded)
+  deriving (Miso.FromJSON, Miso.ToJSON, Aeson.FromJSON, Aeson.ToJSON) via (ViaAeson SuperSetAchievement)
+
+instance Named SuperSetAchievement where
+  name Complete = "Super!"
+
+instance AchievementLike SuperSetAchievement where
+  description Complete = ["Complete a game of SuperSet."]
+
+  enumerate = [minBound..maxBound]
 
 superSet :: SomeGame
 superSet = SomeGame SuperSet

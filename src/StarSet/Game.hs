@@ -79,10 +79,13 @@ instance Eq SomeGame where
 
 class (Ord a, Named a, FromJSON a, ToJSON a) => AchievementLike a where
   description :: a -> [MisoString]
+  enumerate :: [a]
 
 instance Named Void where name = absurd
 
-instance AchievementLike Void where description = absurd
+instance AchievementLike Void where
+  description = absurd
+  enumerate = []
 
 data S where S :: Game g => g -> SpecificAchievement g -> S
 
@@ -126,5 +129,10 @@ instance AchievementLike Achievement where
   description CompleteGame = []
   description FindSet = []
   description (Specific (S _ ach)) = description ach
+
+  enumerate =
+    [ CompleteGame
+    , FindSet
+    ] ++ concatMap (\(_, SomeGame g) -> Specific . S g <$> enumerate) games
 
 instance Show Achievement where show = fromMisoString . name
