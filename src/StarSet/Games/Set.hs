@@ -29,7 +29,7 @@ instance Game Set where
   type Collection Set = (SetCard, SetCard, SetCard)
   type SpecificAchievement Set = SetAchievement
 
-  achievements Set = [Complete, ThreeOfAKind]
+  achievements Set = [minBound..maxBound]
   completeAchievement Set = Just Complete
 
   deck Set = setDeck
@@ -71,8 +71,6 @@ instance Named SetAchievement where
 instance AchievementLike SetAchievement where
   description Complete = ["Complete a game of SET."]
   description ThreeOfAKind = ["In a game of SET, find a set where at least one trait is the same among all three cards."]
-
-  enumerate = [minBound..maxBound]
 
 set :: SomeGame
 set = SomeGame Set

@@ -1,21 +1,24 @@
-{-# LANGUAGE TypeFamilies, OverloadedStrings, OverloadedLists #-}
+{-# LANGUAGE TypeFamilies, OverloadedStrings, OverloadedLists, DerivingVia #-}
 
 module StarSet.Games.ProSet
   ( proSet
   , sevenCardProSet
   ) where
 
+import StarSet.Util.JSON
 import StarSet.Game
 
 import Data.Bits
-import Data.Void
 import Numeric.Natural
+import GHC.Generics
 
 import Miso hiding (set)
 import qualified Miso.Html as H
 import qualified Miso.Html.Property as P
 import qualified Miso.CSS as C
 import qualified Data.Set as Set
+import qualified Miso.JSON as Miso
+import qualified Data.Aeson as Aeson
 
 commonStyles :: [CSS]
 commonStyles =
@@ -96,10 +99,10 @@ instance Named ProSet where
 instance Game ProSet where
   type Card ProSet = Natural
   type Collection ProSet = (Natural, Natural, Natural)
-  type SpecificAchievement ProSet = Void
+  type SpecificAchievement ProSet = ProSetAchievement
 
-  achievements (ProSet _) = []
-  completeAchievement (ProSet _) = Nothing
+  achievements (ProSet n) = [Complete n]
+  completeAchievement (ProSet n) = Just $ Complete n
 
   deck (ProSet n) = [1..2 ^ n - 1]
   laidDown (ProSet _) = 12
@@ -123,15 +126,28 @@ instance Game ProSet where
       ]
     ]
 
+newtype ProSetAchievement
+  = Complete Natural
+  deriving (Eq, Ord, Generic)
+  deriving (Miso.FromJSON, Miso.ToJSON, Aeson.FromJSON, Aeson.ToJSON) via (ViaAeson ProSetAchievement)
+
+instance Named ProSetAchievement where
+  name (Complete 6) = "Professional"
+  name (Complete n) = toMisoString (show n) <> "-dotted Professional"
+
+instance AchievementLike ProSetAchievement where
+  description (Complete 6) = ["Complete a game of ProSet."]
+  description (Complete n) = ["Complete a game of ProSet with " <> toMisoString (show n) <> " dots."]
+
 instance Named SevenCardProSet where name SevenCardProSet = "7-card ProSet"
 
 instance Game SevenCardProSet where
   type Card SevenCardProSet = Natural
   type Collection SevenCardProSet = [Natural]
-  type SpecificAchievement SevenCardProSet = Void
+  type SpecificAchievement SevenCardProSet = SevenCardProSetAchievement
 
-  achievements SevenCardProSet = []
-  completeAchievement SevenCardProSet = Nothing
+  achievements SevenCardProSet = [minBound..maxBound]
+  completeAchievement SevenCardProSet = Just Complete7
 
   deck SevenCardProSet = [1..2 ^ (6 :: Int) - 1]
   laidDown SevenCardProSet = 7
@@ -153,6 +169,17 @@ instance Game SevenCardProSet where
       [ text "A set is a group of at least three cards where, for each dot, an even number of cards has that dot filled."
       ]
     ]
+
+data SevenCardProSetAchievement
+  = Complete7
+  deriving (Eq, Ord, Generic, Enum, Bounded)
+  deriving (Miso.FromJSON, Miso.ToJSON, Aeson.FromJSON, Aeson.ToJSON) via (ViaAeson SevenCardProSetAchievement)
+
+instance Named SevenCardProSetAchievement where
+  name Complete7 = "Cloud Seven"
+
+instance AchievementLike SevenCardProSetAchievement where
+  description Complete7 = ["Complete a game of 7-card ProSet."]
 
 proSet :: Natural -> SomeGame
 proSet = SomeGame . ProSet

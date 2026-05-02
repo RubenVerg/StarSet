@@ -8,6 +8,7 @@ module StarSet.Game
   , S(..)
   , Achievement(..)
   , AchievementLike(..)
+  , allAchievements
   ) where
 
 import {-# SOURCE #-} StarSet.Games
@@ -22,6 +23,7 @@ import Data.List
 import GHC.Generics (Generic)
 
 import Data.Set (Set)
+import qualified Data.Set as Set
 import Miso (View, CSS, MisoString, fromMisoString, toMisoString)
 import qualified Miso.JSON as Miso
 import qualified Data.Aeson as Aeson
@@ -79,13 +81,11 @@ instance Eq SomeGame where
 
 class (Ord a, Named a, FromJSON a, ToJSON a) => AchievementLike a where
   description :: a -> [MisoString]
-  enumerate :: [a]
 
 instance Named Void where name = absurd
 
 instance AchievementLike Void where
   description = absurd
-  enumerate = []
 
 data S where S :: Game g => g -> SpecificAchievement g -> S
 
@@ -130,9 +130,10 @@ instance AchievementLike Achievement where
   description FindSet = []
   description (Specific (S _ ach)) = description ach
 
-  enumerate =
-    [ CompleteGame
-    , FindSet
-    ] ++ concatMap (\(_, SomeGame g) -> Specific . S g <$> enumerate) games
+allAchievements :: [Achievement]
+allAchievements =
+  [ CompleteGame
+  , FindSet
+  ] ++ concatMap (\(_, SomeGame g) -> Specific . S g <$> Set.toList (achievements g)) games
 
 instance Show Achievement where show = fromMisoString . name

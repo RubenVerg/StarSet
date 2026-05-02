@@ -494,7 +494,7 @@ render (AchievementsState _ achs) = H.div_ [] [H.dl_ [P.classes_ ["__achievement
     , text " "
     , text $ name ach
     ] :
-  (H.dd_ [] . pure . text <$> description ach)) $ sortOn (Down . (`Set.member` achs)) enumerate]
+  (H.dd_ [] . pure . text <$> description ach)) $ sortOn (Down . (`Set.member` achs)) allAchievements]
 render (LocalState c st g d) = mount_ $ gameComponent @False c st g d
 render (OnlineState c _ st g d) = mount_ $ gameComponent @True c st g d
 

@@ -35,8 +35,8 @@ instance Game SuperSet where
   type Collection SuperSet = (SetCard, SetCard, SetCard, SetCard)
   type SpecificAchievement SuperSet = SuperSetAchievement
 
-  achievements SuperSet = []
-  completeAchievement SuperSet = Nothing
+  achievements SuperSet = [minBound..maxBound]
+  completeAchievement SuperSet = Just Complete
 
   deck SuperSet = setDeck
   laidDown SuperSet = 9
@@ -79,8 +79,6 @@ instance Named SuperSetAchievement where
 
 instance AchievementLike SuperSetAchievement where
   description Complete = ["Complete a game of SuperSet."]
-
-  enumerate = [minBound..maxBound]
 
 superSet :: SomeGame
 superSet = SomeGame SuperSet

@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, OverloadedStrings, OverloadedLists #-}
+{-# LANGUAGE TypeFamilies, OverloadedStrings, OverloadedLists, DerivingVia #-}
 
 module StarSet.Games.NearSet
   ( nearSet
@@ -8,15 +8,19 @@ module StarSet.Games.NearSet
   , colorNearSet
   ) where
 
+import StarSet.Util.JSON
 import StarSet.Game
 import StarSet.Card.Set
 
 import Data.List (nub, unzip4, (\\))
 import Data.Void
 import Type.Reflection
+import GHC.Generics
 
 import Miso (text, toMisoString)
 import qualified Miso.Html as H
+import qualified Miso.JSON as Miso
+import qualified Data.Aeson as Aeson
 
 sameOrDifferent :: Eq a => [a] -> Bool
 sameOrDifferent xs = let u = length $ nub xs in u == length xs || u == 1
@@ -41,10 +45,10 @@ instance Named NearSet where name NearSet = "NearSet"
 instance Game NearSet where
   type Card NearSet = SetCard
   type Collection NearSet = (SetCard, SetCard, SetCard)
-  type SpecificAchievement NearSet = Void
+  type SpecificAchievement NearSet = NearSetAchievement
 
-  achievements NearSet = []
-  completeAchievement NearSet = Nothing
+  achievements NearSet = [minBound..maxBound]
+  completeAchievement NearSet = Just Complete
 
   deck NearSet = setDeck
   laidDown NearSet = 12
@@ -70,6 +74,17 @@ instance Game NearSet where
       [ text "A set is a group of three cards where you can variate exactly one of the four properties on exactly one of the three cards in such a way that they form a SET-set."
       ]
     ]
+
+data NearSetAchievement
+  = Complete
+  deriving (Eq, Ord, Generic, Enum, Bounded)
+  deriving (Miso.FromJSON, Miso.ToJSON, Aeson.FromJSON, Aeson.ToJSON) via (ViaAeson NearSetAchievement)
+
+instance Named NearSetAchievement where
+  name Complete = "Nearly..."
+
+instance AchievementLike NearSetAchievement where
+  description Complete = ["Complete a game of NearSet."]
 
 newtype NearSetOn a = NearSetOn (SetProperty a)
 
