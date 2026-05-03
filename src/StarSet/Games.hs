@@ -11,6 +11,7 @@ import StarSet.Games.SuperSet
 import StarSet.Games.Stun
 import StarSet.Games.EvenQuads
 import StarSet.Games.WreathSet
+import StarSet.Games.C53T
 
 games :: [(String, SomeGame)]
 games =
@@ -27,6 +28,7 @@ games =
   , ("stun", stun)
   , ("evenQuads", evenQuads)
   , ("wreathSet", wreathSet)
+  , ("c53t", c53t)
   ]
 
 firstGame :: (String, SomeGame)

@@ -14,6 +14,7 @@ library
   exposed-modules: StarSet.Card.Set
                  , StarSet.Game
                  , StarSet.Games
+                 , StarSet.Games.C53T
                  , StarSet.Games.EvenQuads
                  , StarSet.Games.NearSet
                  , StarSet.Games.ProSet
@@ -31,6 +32,7 @@ library
                , combinatorial ^>=0.1.1
                , aeson ^>=2.2.4.1
                , vector
+               , string-interpolate ^>=0.3.4.0
 
 executable starset-client
   ghc-options: -Wall
