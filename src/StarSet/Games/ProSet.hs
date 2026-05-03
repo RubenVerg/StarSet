@@ -117,12 +117,20 @@ instance Game ProSet where
   styles (ProSet _) = commonStyles
   renderCard (ProSet n) = commonRender n
 
-  rules (ProSet n) = H.div_ []
+  rules (ProSet n) ex = H.div_ []
     [ H.div_ []
       [ text $ toMisoString $ "The cards have " ++ show n ++ " dots, each of which can be empty or filled."
       ]
     , H.div_ []
       [ text "A set is a group of three cards where, for each dot, exactly two or exactly zero cards have that dot filled."
+      ]
+    , H.div_ []
+      [ text "For example, this is a set:"
+      ]
+    , ex
+      [ renderCard (ProSet n) 14
+      , renderCard (ProSet n) 42
+      , renderCard (ProSet n) 36
       ]
     ]
 
@@ -161,12 +169,21 @@ instance Game SevenCardProSet where
   styles SevenCardProSet = commonStyles
   renderCard SevenCardProSet = commonRender 6
 
-  rules SevenCardProSet = H.div_ []
+  rules SevenCardProSet ex = H.div_ []
     [ H.div_ []
       [ text "The cards have 6 dots, each of which can be empty or filled."
       ]
     , H.div_ []
       [ text "A set is a group of at least three cards where, for each dot, an even number of cards has that dot filled."
+      ]
+    , H.div_ []
+      [ text "For example, this is a set:"
+      ]
+    , ex
+      [ renderCard SevenCardProSet 62
+      , renderCard SevenCardProSet 42
+      , renderCard SevenCardProSet 22
+      , renderCard SevenCardProSet 2
       ]
     ]
 

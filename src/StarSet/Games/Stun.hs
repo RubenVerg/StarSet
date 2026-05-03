@@ -43,12 +43,20 @@ instance Game Stun where
   styles Stun = setStyles
   renderCard Stun = renderSetCard
 
-  rules Stun = H.div_ []
+  rules Stun ex = H.div_ []
     [ H.div_ []
       [ text "The cards have four characteristics: number of shapes (1, 2, or 3); shape fill (empty, shaded, or filled); shape (oval, diamond, or tilde); color (red, green, or blue)."
       ]
     , H.div_ []
       [ text "A set is a group of three cards where, for each characteristic, two cards share a trait and the third has a different one."
+      ]
+    , H.div_ []
+      [ text "For example, this is a set:"
+      ]
+    , ex
+      [ renderCard Stun $ SetCard Two Empty Tilde Green
+      , renderCard Stun $ SetCard Three Filled Oval Red
+      , renderCard Stun $ SetCard Three Filled Tilde Green
       ]
     ]
 

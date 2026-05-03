@@ -48,7 +48,8 @@ data SetCard = SetCard
   , cardFill :: SetFill
   , cardShape :: SetShape
   , cardColor :: SetColor
-  } deriving (Eq, Ord, Read, Show, Generic)
+  }
+  deriving (Eq, Ord, Read, Show, Generic)
   deriving (Miso.FromJSON, Miso.ToJSON, Aeson.FromJSON, Aeson.ToJSON) via (ViaAeson SetCard)
 
 setDeck :: Set.Set SetCard
@@ -119,7 +120,7 @@ renderSetCard (SetCard n f s c) = let
     Red -> "red"
     Green -> "green"
     Blue -> "blue"
-  sp = intersperse (H.br_ []) $ replicate num (H.span_ [P.classes_ [fill]] [text $ toMisoString symbol])
+  sp = intersperse (H.br_ []) $ replicate num $ H.span_ [P.classes_ [fill]] [text $ toMisoString symbol]
   in H.div_ [P.classes_ ["card", col]] [H.span_ [] sp]
 
 data SetProperty a where

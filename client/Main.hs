@@ -175,6 +175,18 @@ styleSheet = C.sheet_
   , C.selector_ ".__achievements .__got"
     [ C.color C.green
     ]
+  , C.selector_ ".__example"
+    [ C.textAlign "center"
+    ]
+  , C.selector_ ".__example > *"
+    [ C.width $ C.em 8
+    , C.aspectRatio "5/7"
+    , C.border "2px solid black"
+    , C.borderRadius "5px"
+    , C.backgroundColor C.white
+    , C.display "inline-block"
+    , C.margin $ C.em 0.25
+    ]
   , C.selector_ "body"
     [ C.margin "0"
     ]
@@ -310,7 +322,7 @@ gameRender Playing{ stateGame = g, stateDeck = d, stateShowing = s, stateSelecte
     , if sr then H.dialog_ [P.open_ True, P.classes_ ["__rules"]] [H.h3_ []
       [ text $ name g <> ": Rules"
       , H.span_ [H.onClick HideRules] [icon "x"]
-      ], rules g] else text ""
+      ], rules g $ \c -> H.div_ [P.classes_ ["__example"]] $ H.span_ [] . pure <$> c] else text ""
     ]
 gameRender Finished{ stateGame = g, stateDeck = d, stateTime = time, stateCode = cd, stateScore = sc, statePlayers = pl } = let
   rd = (\card -> H.div_ [H.onClick $ Click card, P.classes_ ["__card"]] [renderCard g card]) <$> d

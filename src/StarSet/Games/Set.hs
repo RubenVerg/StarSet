@@ -49,12 +49,20 @@ instance Game Set where
   styles Set = setStyles
   renderCard Set = renderSetCard
 
-  rules Set = H.div_ []
+  rules Set ex = H.div_ []
     [ H.div_ []
       [ text "The cards have four characteristics: number of shapes (1, 2, or 3); shape fill (empty, shaded, or filled); shape (oval, diamond, or tilde); color (red, green, or blue)."
       ]
     , H.div_ []
       [ text "A set is a group of three cards where, for each characteristic, the three cards either all share the same trait or all have different traits."
+      ]
+    , H.div_ []
+      [ text "For example, this is a set:"
+      ]
+    , ex
+      [ renderCard Set $ SetCard Two Filled Oval Red
+      , renderCard Set $ SetCard Two Empty Oval Blue
+      , renderCard Set $ SetCard Two Shaded Oval Green
       ]
     ]
 

@@ -55,7 +55,7 @@ instance Game SuperSet where
   styles SuperSet = setStyles
   renderCard SuperSet = renderSetCard
 
-  rules SuperSet = H.div_ []
+  rules SuperSet ex = H.div_ []
     [ H.div_ []
       [ text "The cards have four characteristics: number of shapes (1, 2, or 3); shape fill (empty, shaded, or filled); shape (oval, diamond, or tilde); color (red, green, or blue)."
       ]
@@ -66,7 +66,23 @@ instance Game SuperSet where
       [ text "Each group of two cards has the property that there exists exactly one other card in the deck that forms a SET-set with them."
       ]
     , H.div_ []
-      [ text "A set is a group of four cards that can be split into two pairs whose third card to complete the SET-set is the same."]
+      [ text "A set is a group of four cards that can be split into two pairs whose third card to complete the SET-set is the same."
+      ]
+    , H.div_ []
+      [ text "For example, this is a set:"
+      ]
+    , ex
+      [ renderCard SuperSet $ SetCard One Shaded Oval Blue
+      , renderCard SuperSet $ SetCard One Filled Tilde Green
+      , renderCard SuperSet $ SetCard Two Empty Tilde Green
+      , renderCard SuperSet $ SetCard Three Empty Oval Blue
+      ]
+    , H.div_ []
+      [ text "because the following card creates a SET-set with both the first two and the last two."
+      ]
+    , ex
+      [ renderCard SuperSet $ SetCard One Empty Diamond Red
+      ]
     ]
 
 data SuperSetAchievement

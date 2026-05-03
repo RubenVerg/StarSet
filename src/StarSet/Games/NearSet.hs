@@ -38,6 +38,49 @@ isNearSetOn prop (a, b, c) = any isOriginalSet $ ((a, b, ) <$> variate prop c) +
 isNearSet :: (SetCard, SetCard, SetCard) -> Bool
 isNearSet cards = isNearSetOn SetNumber cards || isNearSetOn SetFill cards || isNearSetOn SetShape cards || isNearSetOn SetColor cards
 
+example :: SetProperty a -> ([SetCard], [SetCard])
+example SetNumber =
+  ( [ SetCard Three Shaded Diamond Red
+    , SetCard Two Shaded Oval Blue
+    , SetCard Two Shaded Tilde Green
+    ]
+  , [ SetCard Three Shaded Diamond Red
+    , SetCard Two Shaded Oval Blue
+    , SetCard One Shaded Tilde Green
+    ]
+  )
+example SetFill =
+  ( [ SetCard Three Filled Diamond Red
+    , SetCard One Empty Oval Blue
+    , SetCard Two Empty Tilde Green
+    ]
+  , [ SetCard Three Empty Diamond Red
+    , SetCard One Empty Oval Blue
+    , SetCard Two Empty Tilde Green
+    ]
+  )
+example SetShape =
+  ( [ SetCard Three Empty Oval Blue
+    , SetCard Two Empty Diamond Green
+    , SetCard One Empty Oval Red
+    ]
+  , [ SetCard Three Empty Oval Blue
+    , SetCard Two Empty Oval Green
+    , SetCard One Empty Oval Red
+    ]
+  )
+example SetColor =
+  ( [ SetCard Three Empty Tilde Green
+    , SetCard Three Shaded Tilde Red
+    , SetCard Three Filled Tilde Red
+    ]
+  , [ SetCard Three Empty Tilde Green
+    , SetCard Three Shaded Tilde Red
+    , SetCard Three Filled Tilde Blue
+    ]
+  )
+
+
 data NearSet = NearSet deriving (Eq, Ord, Show)
 
 instance Named NearSet where name NearSet = "NearSet"
@@ -63,7 +106,7 @@ instance Game NearSet where
   styles NearSet = setStyles
   renderCard NearSet = renderSetCard
 
-  rules NearSet = H.div_ []
+  rules NearSet ex = H.div_ []
     [ H.div_ []
       [ text "The cards have four characteristics: number of shapes (1, 2, or 3); shape fill (empty, shaded, or filled); shape (oval, diamond, or tilde); color (red, green, or blue)"
       ]
@@ -73,6 +116,14 @@ instance Game NearSet where
     , H.div_ []
       [ text "A set is a group of three cards where you can variate exactly one of the four properties on exactly one of the three cards in such a way that they form a SET-set."
       ]
+    , H.div_ []
+      [ text "For example, this is a set:"
+      ]
+    , ex $ fmap (renderCard NearSet) $ fst $ example SetNumber
+    , H.div_ []
+      [ text "because this is a SET-set:"
+      ]
+    , ex $ fmap (renderCard NearSet) $ snd $ example SetNumber
     ]
 
 data NearSetAchievement
@@ -116,7 +167,7 @@ instance (Enum a, Bounded a, Eq a, Typeable a) => Game (NearSetOn a) where
   styles (NearSetOn _) = setStyles
   renderCard (NearSetOn _) = renderSetCard
 
-  rules (NearSetOn prop) = H.div_ []
+  rules (NearSetOn prop) ex = H.div_ []
     [ H.div_ []
       [ text "The cards have four characteristics: number of shapes (1, 2, or 3); shape fill (empty, shaded, or filled); shape (oval, diamond, or tilde); color (red, green, or blue)"
       ]
@@ -126,6 +177,14 @@ instance (Enum a, Bounded a, Eq a, Typeable a) => Game (NearSetOn a) where
     , H.div_ []
       [ text $ toMisoString $ "A set is a group of three cards where you can variate the " ++ show prop ++ " on exactly one of the three cards in such a way that they form a SET-set."
       ]
+    , H.div_ []
+      [ text "For example, this is a set:"
+      ]
+    , ex $ fmap (renderCard $ NearSetOn prop) $ fst $ example prop
+    , H.div_ []
+      [ text "because this is a SET-set:"
+      ]
+    , ex $ fmap (renderCard $ NearSetOn prop) $ snd $ example prop
     ]
 
 nearSet :: SomeGame
