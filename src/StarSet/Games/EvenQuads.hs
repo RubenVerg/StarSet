@@ -146,21 +146,15 @@ instance Game EvenQuads where
     sp = replicate num $ H.span_ [] [text $ toMisoString symbol]
     in H.div_ [P.classes_ ["card", col]] [H.span_ [P.classes_ [nc]] sp]
 
-  rules EvenQuads ex = H.div_ []
-    [ H.div_ []
-      [ text "The cards have three characteristics: number of shapes (1, 2, 3, or 4); shape (icosahedron, square, circle, or spiral); color (red, green, blue, or yellow)."
-      ]
-    , H.div_ []
-      [ text "A set is a group of four cards where, for each characteristic, the three cards all share the same trait, or all have different traits, or have two of one trait and two of another."
-      ]
-    , H.div_ []
-      [ text "For example, this is a set:"
-      ]
+  rules EvenQuads line ex =
+    [ line "The cards have three characteristics: number of shapes (1, 2, 3, or 4); shape (icosahedron, square, circle, or spiral); color (red, green, blue, or yellow)."
+    , line "A set is a group of four cards where, for each characteristic, the three cards all share the same trait, or all have different traits, or have two of one trait and two of another."
+    , line "For example, this is a set:"
     , ex
-      [ renderCard EvenQuads $ QuadsCard Two Circle Red
-      , renderCard EvenQuads $ QuadsCard One Square Green
-      , renderCard EvenQuads $ QuadsCard One Icosahedron Yellow
-      , renderCard EvenQuads $ QuadsCard Two Spiral Blue
+      [ QuadsCard Two Circle Red
+      , QuadsCard One Square Green
+      , QuadsCard One Icosahedron Yellow
+      , QuadsCard Two Spiral Blue
       ]
     ]
 

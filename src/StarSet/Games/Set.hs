@@ -11,8 +11,6 @@ import StarSet.Card.Set
 import Data.List (nub, unzip4)
 import GHC.Generics
 
-import Miso (text)
-import qualified Miso.Html as H
 import qualified Data.Set as Set
 import qualified Miso.JSON as Miso
 import qualified Data.Aeson as Aeson
@@ -49,20 +47,14 @@ instance Game Set where
   styles Set = setStyles
   renderCard Set = renderSetCard
 
-  rules Set ex = H.div_ []
-    [ H.div_ []
-      [ text "The cards have four characteristics: number of shapes (1, 2, or 3); shape fill (empty, shaded, or filled); shape (oval, diamond, or tilde); color (red, green, or blue)."
-      ]
-    , H.div_ []
-      [ text "A set is a group of three cards where, for each characteristic, the three cards either all share the same trait or all have different traits."
-      ]
-    , H.div_ []
-      [ text "For example, this is a set:"
-      ]
+  rules Set line ex =
+    [ line "The cards have four characteristics: number of shapes (1, 2, or 3); shape fill (empty, shaded, or filled); shape (oval, diamond, or tilde); color (red, green, or blue)."
+    , line "A set is a group of three cards where, for each characteristic, the three cards either all share the same trait or all have different traits."
+    , line "For example, this is a set:"
     , ex
-      [ renderCard Set $ SetCard Two Filled Oval Red
-      , renderCard Set $ SetCard Two Empty Oval Blue
-      , renderCard Set $ SetCard Two Shaded Oval Green
+      [ SetCard Two Filled Oval Red
+      , SetCard Two Empty Oval Blue
+      , SetCard Two Shaded Oval Green
       ]
     ]
 

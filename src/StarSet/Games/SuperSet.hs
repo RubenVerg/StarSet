@@ -12,8 +12,6 @@ import Data.List (find, (\\))
 import Data.Maybe
 import GHC.Generics
 
-import Miso (text)
-import qualified Miso.Html as H
 import qualified Miso.JSON as Miso
 import qualified Data.Aeson as Aeson
 import Combinatorics (variate)
@@ -55,33 +53,21 @@ instance Game SuperSet where
   styles SuperSet = setStyles
   renderCard SuperSet = renderSetCard
 
-  rules SuperSet ex = H.div_ []
-    [ H.div_ []
-      [ text "The cards have four characteristics: number of shapes (1, 2, or 3); shape fill (empty, shaded, or filled); shape (oval, diamond, or tilde); color (red, green, or blue)."
-      ]
-    , H.div_ []
-      [ text "A SET-set is a group of three cards where, for each characteristic, the three cards either all share the same trait or all have different traits."
-      ]
-    , H.div_ []
-      [ text "Each group of two cards has the property that there exists exactly one other card in the deck that forms a SET-set with them."
-      ]
-    , H.div_ []
-      [ text "A set is a group of four cards that can be split into two pairs whose third card to complete the SET-set is the same."
-      ]
-    , H.div_ []
-      [ text "For example, this is a set:"
-      ]
+  rules SuperSet line ex =
+    [ line "The cards have four characteristics: number of shapes (1, 2, or 3); shape fill (empty, shaded, or filled); shape (oval, diamond, or tilde); color (red, green, or blue)."
+    , line "A SET-set is a group of three cards where, for each characteristic, the three cards either all share the same trait or all have different traits."
+    , line "Each group of two cards has the property that there exists exactly one other card in the deck that forms a SET-set with them."
+    , line "A set is a group of four cards that can be split into two pairs whose third card to complete the SET-set is the same."
+    , line "For example, this is a set:"
     , ex
-      [ renderCard SuperSet $ SetCard One Shaded Oval Blue
-      , renderCard SuperSet $ SetCard One Filled Tilde Green
-      , renderCard SuperSet $ SetCard Two Empty Tilde Green
-      , renderCard SuperSet $ SetCard Three Empty Oval Blue
+      [ SetCard One Shaded Oval Blue
+      , SetCard One Filled Tilde Green
+      , SetCard Two Empty Tilde Green
+      , SetCard Three Empty Oval Blue
       ]
-    , H.div_ []
-      [ text "because the following card creates a SET-set with both the first two and the last two."
-      ]
+    , line "because the following card creates a SET-set with both the first two and the last two."
     , ex
-      [ renderCard SuperSet $ SetCard One Empty Diamond Red
+      [ SetCard One Empty Diamond Red
       ]
     ]
 

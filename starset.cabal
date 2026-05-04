@@ -11,7 +11,8 @@ library
   ghc-options: -Wall
   default-language: GHC2024
   hs-source-dirs: src
-  exposed-modules: StarSet.Card.Set
+  exposed-modules: StarSet.Card.Permutation
+                 , StarSet.Card.Set
                  , StarSet.Game
                  , StarSet.Games
                  , StarSet.Games.C53T
@@ -33,6 +34,7 @@ library
                , aeson ^>=2.2.4.1
                , vector
                , string-interpolate ^>=0.3.4.0
+               , fixed-vector ^>=2.1.1.0
 
 executable starset-client
   ghc-options: -Wall

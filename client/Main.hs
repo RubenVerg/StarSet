@@ -322,7 +322,7 @@ gameRender Playing{ stateGame = g, stateDeck = d, stateShowing = s, stateSelecte
     , if sr then H.dialog_ [P.open_ True, P.classes_ ["__rules"]] [H.h3_ []
       [ text $ name g <> ": Rules"
       , H.span_ [H.onClick HideRules] [icon "x"]
-      ], rules g $ \c -> H.div_ [P.classes_ ["__example"]] $ H.span_ [] . pure <$> c] else text ""
+      ], H.div_ [] $ rules g (\l -> H.div_ [] [text $ toMisoString l]) (\c -> H.div_ [P.classes_ ["__example"]] $ H.span_ [] . pure . renderCard g <$> c)] else text ""
     ]
 gameRender Finished{ stateGame = g, stateDeck = d, stateTime = time, stateCode = cd, stateScore = sc, statePlayers = pl } = let
   rd = (\card -> H.div_ [H.onClick $ Click card, P.classes_ ["__card"]] [renderCard g card]) <$> d

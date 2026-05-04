@@ -66,7 +66,7 @@ class
   styles :: g -> [CSS]
   renderCard :: g -> Card g -> View model action
 
-  rules :: g -> ([View model action] -> View model action) -> View model action
+  rules :: g -> (String -> a) -> ([Card g] -> a) -> [a]
 
 data SomeGame where
   SomeGame :: Game g => g -> SomeGame

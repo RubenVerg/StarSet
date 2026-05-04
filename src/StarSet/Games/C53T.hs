@@ -150,22 +150,16 @@ instance Game C53T where
         ]
       ]
 
-  rules C53T ex = H.div_ []
-    [ H.div_ []
-      [ text "The cards have three pentagons, each with a colored spoke going from the center to one of the vertices."
-      ]
-    , H.div_ []
-      [ text "A set is a group of at five cards where, for each pentagon, the colored spokes are laid out in a way that they have an axis of symmetry"
-      ]
-    , H.div_ []
-      [ text "For example, this is a set:"
-      ]
+  rules C53T line ex =
+    [ line "The cards have three pentagons, each with a colored spoke going from the center to one of the vertices."
+    , line "A set is a group of at five cards where, for each pentagon, the colored spokes are laid out in a way that they have an axis of symmetry"
+    , line "For example, this is a set:"
     , ex
-      [ renderCard C53T $ C53TCard Zero Two Zero
-      , renderCard C53T $ C53TCard One Four Two
-      , renderCard C53T $ C53TCard Zero One Three
-      , renderCard C53T $ C53TCard Zero Two One
-      , renderCard C53T $ C53TCard Four One Four
+      [ C53TCard Zero Two Zero
+      , C53TCard One Four Two
+      , C53TCard Zero One Three
+      , C53TCard Zero Two One
+      , C53TCard Four One Four
       ]
     ]
 

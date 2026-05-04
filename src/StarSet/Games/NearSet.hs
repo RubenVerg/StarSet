@@ -17,8 +17,7 @@ import Data.Void
 import Type.Reflection
 import GHC.Generics
 
-import Miso (text, toMisoString)
-import qualified Miso.Html as H
+import Miso (toMisoString)
 import qualified Miso.JSON as Miso
 import qualified Data.Aeson as Aeson
 
@@ -106,24 +105,14 @@ instance Game NearSet where
   styles NearSet = setStyles
   renderCard NearSet = renderSetCard
 
-  rules NearSet ex = H.div_ []
-    [ H.div_ []
-      [ text "The cards have four characteristics: number of shapes (1, 2, or 3); shape fill (empty, shaded, or filled); shape (oval, diamond, or tilde); color (red, green, or blue)"
-      ]
-    , H.div_ []
-      [ text "A SET-set is a group of three cards where, for each characteristic, the three cards either all share the same trait or all have different traits."
-      ]
-    , H.div_ []
-      [ text "A set is a group of three cards where you can variate exactly one of the four properties on exactly one of the three cards in such a way that they form a SET-set."
-      ]
-    , H.div_ []
-      [ text "For example, this is a set:"
-      ]
-    , ex $ fmap (renderCard NearSet) $ fst $ example SetNumber
-    , H.div_ []
-      [ text "because this is a SET-set:"
-      ]
-    , ex $ fmap (renderCard NearSet) $ snd $ example SetNumber
+  rules NearSet line ex =
+    [ line "The cards have four characteristics: number of shapes (1, 2, or 3); shape fill (empty, shaded, or filled); shape (oval, diamond, or tilde); color (red, green, or blue)"
+    , line "A SET-set is a group of three cards where, for each characteristic, the three cards either all share the same trait or all have different traits."
+    , line "A set is a group of three cards where you can variate exactly one of the four properties on exactly one of the three cards in such a way that they form a SET-set."
+    , line "For example, this is a set:"
+    , ex $ fst $ example SetNumber
+    , line "because this is a SET-set:"
+    , ex $ snd $ example SetNumber
     ]
 
 data NearSetAchievement
@@ -167,24 +156,14 @@ instance (Enum a, Bounded a, Eq a, Typeable a) => Game (NearSetOn a) where
   styles (NearSetOn _) = setStyles
   renderCard (NearSetOn _) = renderSetCard
 
-  rules (NearSetOn prop) ex = H.div_ []
-    [ H.div_ []
-      [ text "The cards have four characteristics: number of shapes (1, 2, or 3); shape fill (empty, shaded, or filled); shape (oval, diamond, or tilde); color (red, green, or blue)"
-      ]
-    , H.div_ []
-      [ text "A SET-set is a group of three cards where, for each characteristic, the three cards either all share the same trait or all have different traits."
-      ]
-    , H.div_ []
-      [ text $ toMisoString $ "A set is a group of three cards where you can variate the " ++ show prop ++ " on exactly one of the three cards in such a way that they form a SET-set."
-      ]
-    , H.div_ []
-      [ text "For example, this is a set:"
-      ]
-    , ex $ fmap (renderCard $ NearSetOn prop) $ fst $ example prop
-    , H.div_ []
-      [ text "because this is a SET-set:"
-      ]
-    , ex $ fmap (renderCard $ NearSetOn prop) $ snd $ example prop
+  rules (NearSetOn prop) line ex =
+    [ line "The cards have four characteristics: number of shapes (1, 2, or 3); shape fill (empty, shaded, or filled); shape (oval, diamond, or tilde); color (red, green, or blue)"
+    , line "A SET-set is a group of three cards where, for each characteristic, the three cards either all share the same trait or all have different traits."
+    , line $ "A set is a group of three cards where you can variate the " ++ show prop ++ " on exactly one of the three cards in such a way that they form a SET-set."
+    , line "For example, this is a set:"
+    , ex $ fst $ example prop
+    , line "because this is a SET-set:"
+    , ex $ snd $ example prop
     ]
 
 nearSet :: SomeGame

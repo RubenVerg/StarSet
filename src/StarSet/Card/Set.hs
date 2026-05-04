@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveAnyClass, OverloadedStrings, DerivingVia #-}
+{-# LANGUAGE OverloadedStrings, DerivingVia #-}
 
 module StarSet.Card.Set
   ( SetNumber(..)
