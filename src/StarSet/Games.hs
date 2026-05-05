@@ -28,7 +28,7 @@ games =
   , ("stun", stun)
   , ("evenQuads", evenQuads)
   , ("wreathSet", wreathSet)
-  , ("tripleWreathSet", tripleWreathSet)
+  , ("tripleEvenWreathSet", tripleEvenWreathSet)
   , ("c53t", c53t)
   ]
 

@@ -2,7 +2,7 @@
 
 module StarSet.Games.WreathSet
   ( wreathSet
-  , tripleWreathSet
+  , tripleEvenWreathSet
   ) where
 
 import StarSet.Util.JSON
@@ -18,7 +18,7 @@ import qualified Data.Aeson as Aeson
 import Combinatorics
 
 data WreathSet = WreathSet deriving (Eq, Ord, Show)
-data TripleWreathSet = TripleWreathSet deriving (Eq, Ord, Show)
+data TripleEvenWreathSet = TripleEvenWreathSet deriving (Eq, Ord, Show)
 
 instance Named WreathSet where name WreathSet = "Wreath Set"
 
@@ -65,54 +65,53 @@ instance Named WreathSetAchievement where
 instance AchievementLike WreathSetAchievement where
   description Complete = ["Complete a game of Wreath Set."]
 
-instance Named TripleWreathSet where name TripleWreathSet = "Triple Wreath Set"
+instance Named TripleEvenWreathSet where name TripleEvenWreathSet = "Triple Even Wreath Set"
 
-instance Game TripleWreathSet where
-  type Card TripleWreathSet = PermutationCard 3 Z3
-  type Collection TripleWreathSet = Set (PermutationCard 3 Z3)
-  type SpecificAchievement TripleWreathSet = TripleWreathSetAchievement
+instance Game TripleEvenWreathSet where
+  type Card TripleEvenWreathSet = PermutationCard 3 Z3
+  type Collection TripleEvenWreathSet = Set (PermutationCard 3 Z3)
+  type SpecificAchievement TripleEvenWreathSet = TripleEvenWreathSetAchievement
 
-  achievements TripleWreathSet = [minBound..maxBound]
-  completeAchievement TripleWreathSet = Just CompleteT
+  achievements TripleEvenWreathSet = [minBound..maxBound]
+  completeAchievement TripleEvenWreathSet = Just CompleteT
 
-  deck TripleWreathSet = permutationDeck
-  laidDown TripleWreathSet = 9
-  noSetAction TripleWreathSet = AddMore 3
-  minimumSet TripleWreathSet = 3
-  maximumSet TripleWreathSet = Nothing
-  makeSet TripleWreathSet = id
-  isSet TripleWreathSet cards = any ((== identityCard) . foldr1 composeCards) $ permuteFast $ Set.toList cards
-  setAchievements TripleWreathSet _ = []
+  deck TripleEvenWreathSet = Set.filter (not . cardParity) permutationDeck
+  laidDown TripleEvenWreathSet = 9
+  noSetAction TripleEvenWreathSet = AddMore 3
+  minimumSet TripleEvenWreathSet = 3
+  maximumSet TripleEvenWreathSet = Nothing
+  makeSet TripleEvenWreathSet = id
+  isSet TripleEvenWreathSet cards = any ((== identityCard) . foldr1 composeCards) $ permuteFast $ Set.toList cards
+  setAchievements TripleEvenWreathSet _ = []
 
-  styles TripleWreathSet = permutationStyles
-  renderCard TripleWreathSet = renderPermutationCard True
+  styles TripleEvenWreathSet = permutationStyles
+  renderCard TripleEvenWreathSet = renderPermutationCard False
 
-  rules TripleWreathSet line ex =
-    [ line "The cards have three lines representing a permutation of three elements, and each line has no bead, or an empty bead, or a filled bead."
+  rules TripleEvenWreathSet line ex =
+    [ line "The cards have three lines representing an even permutation of three elements, and each line has no bead, or an empty bead, or a filled bead."
     , line "A filled bead and an empty bead cancel out; three beads of the same shading cancel out."
     , line "A set is a group of at least three cards that can be placed next to each other in such a way that the permutation composes to the identity permutation (all lines go back to where they started), and the beads on each line cancel out."
     , line "For example, this is a set:"
     , ex
-      [ PermutationCard (generate ([1, 2, 0] !!)) (generate ([Empty, None, None] !!))
-      , PermutationCard (generate ([1, 0, 2] !!)) (generate ([Filled, Empty, Empty] !!))
-      , PermutationCard (generate ([0, 2, 1] !!)) (generate ([Empty, Empty, Filled] !!))
+      [ PermutationCard (generate ([1, 2, 0] !!)) (generate ([Empty, Empty, Empty] !!))
+      , PermutationCard (generate ([2, 0, 1] !!)) (generate ([None, Filled, Empty] !!))
+      , PermutationCard (generate ([0, 1, 2] !!)) (generate ([None, Empty, Filled] !!))
       ]
-    , line "The dot indicates the parity of the permutation and might be useful in spotting sets."
     ]
 
-data TripleWreathSetAchievement
+data TripleEvenWreathSetAchievement
   = CompleteT
   deriving (Eq, Ord, Generic, Enum, Bounded)
-  deriving (Miso.FromJSON, Miso.ToJSON, Aeson.FromJSON, Aeson.ToJSON) via (ViaAeson TripleWreathSetAchievement)
+  deriving (Miso.FromJSON, Miso.ToJSON, Aeson.FromJSON, Aeson.ToJSON) via (ViaAeson TripleEvenWreathSetAchievement)
 
-instance Named TripleWreathSetAchievement where
+instance Named TripleEvenWreathSetAchievement where
   name CompleteT = "Triple Holiday"
 
-instance AchievementLike TripleWreathSetAchievement where
-  description CompleteT = ["Complete a game of Triple Wreath Set."]
+instance AchievementLike TripleEvenWreathSetAchievement where
+  description CompleteT = ["Complete a game of Triple Even Wreath Set."]
 
 wreathSet :: SomeGame
 wreathSet = SomeGame WreathSet
 
-tripleWreathSet :: SomeGame
-tripleWreathSet = SomeGame TripleWreathSet
+tripleEvenWreathSet :: SomeGame
+tripleEvenWreathSet = SomeGame TripleEvenWreathSet
