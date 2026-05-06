@@ -116,6 +116,9 @@ instance Aeson.ToJSON S where
 data Achievement
   = CompleteGame
   | FindSet
+  | WinOnlineGame
+  | HostGame
+  | ConnectToGame
   | Specific S
   deriving (Eq, Ord, Generic)
   deriving (Miso.FromJSON, Miso.ToJSON, Aeson.FromJSON, Aeson.ToJSON) via (ViaAeson Achievement)
@@ -123,17 +126,26 @@ data Achievement
 instance Named Achievement where
   name CompleteGame = "Complete any game"
   name FindSet = "Find any set"
+  name WinOnlineGame = "Internet Star"
+  name HostGame = "Trendsetter"
+  name ConnectToGame = "Join the Party"
   name (Specific (S _ ach)) = name ach
 
 instance AchievementLike Achievement where
   description CompleteGame = []
   description FindSet = []
+  description WinOnlineGame = ["Win an online game"]
+  description HostGame = ["Host an online game"]
+  description ConnectToGame = ["Connect to an online game"]
   description (Specific (S _ ach)) = description ach
 
 allAchievements :: [Achievement]
 allAchievements =
   [ CompleteGame
   , FindSet
+  , WinOnlineGame
+  , HostGame
+  , ConnectToGame
   ] ++ concatMap (\(_, SomeGame g) -> Specific . S g <$> Set.toList (achievements g)) games
 
 instance Show Achievement where show = fromMisoString . name

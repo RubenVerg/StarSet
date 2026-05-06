@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, ViewPatterns #-}
+{-# LANGUAGE OverloadedStrings, ViewPatterns, OverloadedLists #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Main (main) where
@@ -66,7 +66,7 @@ type WebSocketApi = "ws" :> "host" :> Capture "game" String :> WebSocket
 
 hostServer :: ServerT ("ws" :> "host" :> Capture "game" String :> WebSocket) AppM
 hostServer game conn = case lookup game games of
-  Just (SomeGame g) -> do
+  Just (SomeGame @g g) -> do
     ServerState{ serverRandom = r, serverGames = gs } <- ask
     liftIO $ void $ forkIO $ pingThread conn 10 (pure ())
     i <- liftIO $ customNanoID defaultAlphabet 12 r
@@ -75,6 +75,7 @@ hostServer game conn = case lookup game games of
     ci <- liftIO $ customNanoID defaultAlphabet 12 r
     let s = SomeGameState $ GameState g d (laidDown g) n $ Map.fromList [(ci, (conn, 0))]
     liftIO $ atomically $ readTVar gs >>= writeTVar gs . Map.insert i s
+    send conn $ S2CAchieve @g [HostGame]
     gameServer i ci conn
   Nothing -> pure ()
 
@@ -84,6 +85,10 @@ joinServer i conn = do
   liftIO $ void $ forkIO $ pingThread conn 10 (pure ())
   ci <- liftIO $ customNanoID defaultAlphabet 12 r
   liftIO $ atomically $ readTVar gs >>= writeTVar gs . Map.update (\(SomeGameState g) -> Just $ SomeGameState g{ stateConnections = Map.insert ci (conn, 0) $ stateConnections g }) i
+  sg <- liftIO $ Map.lookup i <$> readTVarIO gs
+  case sg of
+    Just (SomeGameState @g _) -> send conn $ S2CAchieve @g [ConnectToGame]
+    _ -> pure ()
   gameServer i ci conn
 
 send :: (MonadIO m, Game g) => Connection -> S2CMessage g -> m ()
@@ -119,7 +124,9 @@ checkForSet ci gt@GameState{ stateGame = g, stateDeck = d, stateShowing = s, sta
   None -> pure gt
   NoMoreSets as -> do
     n <- liftIO $ (* 1000) . realToFrac <$> getPOSIXTime
-    forM_ (Map.toList conns) $ \(ci1, (conn, yours)) -> send conn $ S2CGameOver @g (n - st) yours (fmap snd $ Map.elems $ Map.delete ci1 conns)
+    forM_ (Map.toList conns) $ \(ci1, (conn, yours)) -> do
+      send conn $ S2CGameOver @g (n - st) yours (fmap snd $ Map.elems $ Map.delete ci1 conns)
+      when (foldr (max . snd) 0 (Map.elems conns) == yours) $ send conn $ S2CAchieve @g [WinOnlineGame]
     forM_ (map fst $ Map.elems conns) $ flip send $ S2CAchieve @g as
     pure gt
   FoundSet as d' -> do
@@ -157,7 +164,7 @@ server = socketServer
     { ssIndices = unsafeToPiece <$> ["index.html", "index.htm"]
     , ssMaxAge = NoCache
     , ss404Handler = Just $ \_ rs -> do
-      rs $ responseFile status200 [("Content-Type", "text/html")] "dist/index.html" Nothing 
+      rs $ responseFile status200 [("Content-Type", "text/html")] "dist/index.html" Nothing
     }
 
 main :: IO ()
