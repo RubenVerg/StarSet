@@ -38,7 +38,7 @@ foreign export javascript "hs_start" main :: IO ()
 #endif
 
 type Code online = If online (Maybe MisoString) ()
-type Score online = If online (Natural, [Natural]) ()
+type Score online = If online (Natural, [(MisoString, Natural)]) ()
 type Players online = If online Natural ()
 
 data GameState (online :: Bool) g
@@ -251,7 +251,7 @@ instance Game g => OnlineSwitches True g where
     [ H.span_ [] [text "Your score: ", text $ toMisoString $ show y]
     , H.div_ []
       [ H.span_ [] [text "Other scores: "]
-      , H.ul_ [] $ H.li_ [] . pure . text . toMisoString . show <$> o
+      , H.ul_ [] $ (\(n, p) -> H.li_ [] [text n, ": ", text $ toMisoString $ show p]) <$> o
       ]
     ]
   onePlayer = 1
@@ -395,12 +395,14 @@ data AppState where
   BeginState :: Config -> MisoString -> String -> AppState
   AchievementsState :: Config -> Set Achievement -> AppState
   LocalState :: Game g => Config -> Double -> g -> [Card g] -> AppState
+  JoiningState :: Game g => Config -> Maybe MisoString -> Bool -> MisoString -> g -> AppState
   OnlineState :: Game g => Config -> WebSocket -> Double -> g -> [Card g] -> AppState
 
 appConfig :: AppState -> Config
 appConfig (BeginState c _ _) = c
 appConfig (AchievementsState c _) = c
 appConfig (LocalState c _ _ _) = c
+appConfig (JoiningState c _ _ _ _) = c
 appConfig (OnlineState c _ _ _ _) = c
 
 instance Eq AppState where
@@ -408,6 +410,9 @@ instance Eq AppState where
   (AchievementsState a0 a1) == (AchievementsState b0 b1) = (a0, a1) == (b0, b1)
   (LocalState @a a0 a1 a2 a3) == (LocalState @b b0 b1 b2 b3) = case eqTypeRep (typeRep @a) (typeRep @b) of
     Just HRefl -> (a0, a1, a2, a3) == (b0, b1, b2, b3)
+    Nothing -> False
+  (JoiningState @a a0 a1 a2 a3 a4) == (JoiningState @b b0 b1 b2 b3 b4) = case eqTypeRep (typeRep @a) (typeRep @b) of
+    Just HRefl -> (a0, a1, a2, a3, a4) == (b0, b1, b2, b3, b4)
     Nothing -> False
   (OnlineState @a a0 a1 a2 a3 a4) == (OnlineState @b b0 b1 b2 b3 b4) = case eqTypeRep (typeRep @a) (typeRep @b) of
     Just HRefl -> (a0, a1, a2, a3, a4) == (b0, b1, b2, b3, b4)
@@ -437,6 +442,10 @@ data AppEvent where
   SendC2S :: SendC2SRequest -> AppEvent
   Achievements :: AppEvent
   DoAchievements :: Set Achievement -> AppEvent
+  ToJoin :: Game g => Maybe MisoString -> g -> AppEvent
+  ChangeName :: MisoString -> AppEvent
+  ToggleSave :: AppEvent
+  DoJoin :: Game g => Maybe MisoString -> Bool -> MisoString -> g -> AppEvent
 
 handle :: AppEvent -> Effect parent AppState AppEvent
 handle Begin = do
@@ -457,7 +466,11 @@ handle Host = do
   s <- get
   case s of
     BeginState _ _ key -> case lookup key games of
-      Just (SomeGame @g g) -> connectJSON @(S2CMessage g) ("/ws/host/" <> toMisoString key) (OnlineOpen g) OnlineClose (OnlineMessage @g) OnlineError
+      Just (SomeGame g) -> sync $ do
+        nam' <- getLocalStorage "username"
+        case nam' of
+          Just nam -> pure $ DoJoin Nothing True nam g
+          Nothing -> pure $ ToJoin Nothing g
       Nothing -> pure ()
     _ -> pure ()
 handle Connect = do
@@ -467,7 +480,11 @@ handle Connect = do
     _ -> pure ()
 handle (DoConnect i key) = case lookup key games of
   Nothing -> pure ()
-  Just (SomeGame @g g) -> connectJSON @(S2CMessage g) ("/ws/join/" <> i) (OnlineOpen g) OnlineClose (OnlineMessage @g) OnlineError
+  Just (SomeGame g) -> sync $ do
+    nam' <- getLocalStorage "username"
+    case nam' of
+      Just nam -> pure $ DoJoin (Just i) True nam g
+      Nothing -> pure $ ToJoin (Just i) g
 handle (SelectGame key) = modify $ \case
   BeginState c i _ -> BeginState c i key
   o -> o
@@ -487,6 +504,24 @@ handle Achievements = sync $ do
   s <- decode . fromMaybe "[]" <$> getLocalStorage "achievements"
   pure $ DoAchievements $ Set.fromList $ fromMaybe [] s
 handle (DoAchievements achs) = modify $ \(appConfig -> c) -> AchievementsState c achs
+handle (ToJoin cd g) = do
+  st <- get
+  put $ JoiningState (appConfig st) cd False "" g
+handle (ChangeName nam) = do
+  st <- get
+  case st of
+    JoiningState c cd save _ g -> put $ JoiningState c cd save nam g
+    _ -> pure ()
+handle ToggleSave = do
+  st <- get
+  case st of
+    JoiningState c cd save nam g -> put $ JoiningState c cd (not save) nam g
+    _ -> pure ()
+handle (DoJoin @g cd save nam g) = do
+  when save $ sync_ $ setLocalStorage "username" nam
+  case cd of
+    Nothing -> connectJSON @(S2CMessage g) ("/ws/host/" <> toMisoString (fst $ fromJust $ find ((== SomeGame g) . snd) games) <> "?name=" <> nam) (OnlineOpen g) OnlineClose (OnlineMessage @g) OnlineError
+    Just i -> connectJSON @(S2CMessage g) ("/ws/join/" <> i <> "?name=" <> nam) (OnlineOpen g) OnlineClose (OnlineMessage @g) OnlineError
 
 render :: AppState -> View AppState AppEvent
 render (BeginState _ code k) = H.div_ []
@@ -508,6 +543,12 @@ render (AchievementsState _ achs) = H.div_ [] [H.dl_ [P.classes_ ["__achievement
     ] :
   (H.dd_ [] . pure . text <$> description ach)) $ sortOn (Down . (`Set.member` achs)) allAchievements]
 render (LocalState c st g d) = mount_ $ gameComponent @False c st g d
+render (JoiningState _ cd save nam g) = H.div_ []
+  [ H.input_ [H.onInput ChangeName, P.value_ nam, P.placeholder_ "Username"]
+  , H.input_ [P.type_ "checkbox", P.name_ "save", P.checked_ save, H.onClick ToggleSave]
+  , H.label_ [P.for_ "save"] [text "Save for future games"]
+  , H.button_ [H.onClick $ DoJoin cd save nam g] [text "Connect"]
+  ]
 render (OnlineState c _ st g d) = mount_ $ gameComponent @True c st g d
 
 makeApp :: AppState -> App AppState AppEvent

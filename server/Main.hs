@@ -37,6 +37,7 @@ import System.Random.MWC.Distributions
 import Data.NanoID
 import qualified Data.Vector as V
 import Miso.JSON
+import Miso.String (toMisoString)
 import Data.Time.Clock.POSIX
 
 deriving instance Ord NanoID
@@ -44,12 +45,18 @@ deriving instance Ord NanoID
 instance FromHttpApiData NanoID where
   parseUrlPiece = Right . NanoID . T.encodeUtf8
 
+data ConnInfo = ConnInfo
+  { connConnection :: Connection
+  , connPoints :: Natural
+  , connName :: String
+  }
+
 data GameState g = GameState
   { stateGame :: g
   , stateDeck :: [Card g]
   , stateShowing :: Natural
   , stateStart :: Double
-  , stateConnections :: Map NanoID (Connection, Natural)
+  , stateConnections :: Map NanoID ConnInfo
   }
 
 data SomeGameState where SomeGameState :: Game g => GameState g -> SomeGameState
@@ -61,11 +68,11 @@ data ServerState = ServerState
 
 type AppM = ReaderT ServerState Handler
 
-type WebSocketApi = "ws" :> "host" :> Capture "game" String :> WebSocket
-               :<|> "ws" :> "join" :> Capture "id" NanoID :> WebSocket
+type WebSocketApi = "ws" :> "host" :> Capture "game" String :> QueryParam' '[Required, Strict] "name" String :> WebSocket
+               :<|> "ws" :> "join" :> Capture "id" NanoID :> QueryParam' '[Required, Strict] "name" String :> WebSocket
 
-hostServer :: ServerT ("ws" :> "host" :> Capture "game" String :> WebSocket) AppM
-hostServer game conn = case lookup game games of
+hostServer :: ServerT ("ws" :> "host" :> Capture "game" String :> QueryParam' '[Required, Strict] "name" String :> WebSocket) AppM
+hostServer game nam conn = case lookup game games of
   Just (SomeGame @g g) -> do
     ServerState{ serverRandom = r, serverGames = gs } <- ask
     liftIO $ void $ forkIO $ pingThread conn 10 (pure ())
@@ -73,18 +80,18 @@ hostServer game conn = case lookup game games of
     d <- liftIO $ V.toList <$> uniformShuffle (V.fromList $ Set.toList $ deck g) r
     n <- liftIO $ (* 1000) . realToFrac <$> getPOSIXTime
     ci <- liftIO $ customNanoID defaultAlphabet 12 r
-    let s = SomeGameState $ GameState g d (laidDown g) n $ Map.fromList [(ci, (conn, 0))]
+    let s = SomeGameState $ GameState g d (laidDown g) n $ Map.fromList [(ci, ConnInfo conn 0 nam)]
     liftIO $ atomically $ readTVar gs >>= writeTVar gs . Map.insert i s
     send conn $ S2CAchieve @g [HostGame]
     gameServer i ci conn
   Nothing -> pure ()
 
-joinServer :: ServerT ("ws" :> "join" :> Capture "id" NanoID :> WebSocket) AppM
-joinServer i conn = do
+joinServer :: ServerT ("ws" :> "join" :> Capture "id" NanoID :> QueryParam' '[Required, Strict] "name" String :> WebSocket) AppM
+joinServer i nam conn = do
   ServerState{ serverRandom = r, serverGames = gs } <- ask
   liftIO $ void $ forkIO $ pingThread conn 10 (pure ())
   ci <- liftIO $ customNanoID defaultAlphabet 12 r
-  liftIO $ atomically $ readTVar gs >>= writeTVar gs . Map.update (\(SomeGameState g) -> Just $ SomeGameState g{ stateConnections = Map.insert ci (conn, 0) $ stateConnections g }) i
+  liftIO $ atomically $ readTVar gs >>= writeTVar gs . Map.update (\(SomeGameState g) -> Just $ SomeGameState g{ stateConnections = Map.insert ci (ConnInfo conn 0 nam) $ stateConnections g }) i
   sg <- liftIO $ Map.lookup i <$> readTVarIO gs
   case sg of
     Just (SomeGameState @g _) -> send conn $ S2CAchieve @g [ConnectToGame]
@@ -101,7 +108,7 @@ gameServer i@(NanoID (T.decodeUtf8 -> is)) ci conn = do
     sg <- liftIO $ Map.lookup i <$> readTVarIO gs
     case sg of
       Nothing -> pure ()
-      Just (SomeGameState @g GameState{ stateStart = n, stateConnections = conns }) -> forM_ (map fst $ Map.elems conns) $ flip send $ S2CInfo @g n is $ fromIntegral $ Map.size conns
+      Just (SomeGameState @g GameState{ stateStart = n, stateConnections = conns }) -> forM_ (map connConnection $ Map.elems conns) $ flip send $ S2CInfo @g n is $ fromIntegral $ Map.size conns
   forever $ do
     gs <- asks serverGames
     dt <- liftIO $ receiveData conn
@@ -114,7 +121,7 @@ gameServer i@(NanoID (T.decodeUtf8 -> is)) ci conn = do
           Just (C2SSelection sel) -> do
             gt' <- checkForSet ci gt sel
             liftIO $ atomically $ readTVar gs >>= writeTVar gs . Map.insert i (SomeGameState gt')
-            forM_ (map fst $ Map.elems $ stateConnections gt') $ flip send $ S2CSetDeck @g (stateShowing gt') (stateDeck gt')
+            forM_ (map connConnection $ Map.elems $ stateConnections gt') $ flip send $ S2CSetDeck @g (stateShowing gt') (stateDeck gt')
           Just C2SGetDeck -> send conn $ S2CSetDeck @g s d
           Just C2SGetInfo -> send conn $ S2CInfo @g n is $ fromIntegral $ Map.size conns
           Nothing -> pure ()
@@ -124,14 +131,14 @@ checkForSet ci gt@GameState{ stateGame = g, stateDeck = d, stateShowing = s, sta
   None -> pure gt
   NoMoreSets as -> do
     n <- liftIO $ (* 1000) . realToFrac <$> getPOSIXTime
-    forM_ (Map.toList conns) $ \(ci1, (conn, yours)) -> do
-      send conn $ S2CGameOver @g (n - st) yours (fmap snd $ Map.elems $ Map.delete ci1 conns)
-      when (foldr (max . snd) 0 (Map.elems conns) == yours) $ send conn $ S2CAchieve @g [WinOnlineGame]
-    forM_ (map fst $ Map.elems conns) $ flip send $ S2CAchieve @g as
+    forM_ (Map.toList conns) $ \(ci1, ConnInfo conn yours _) -> do
+      send conn $ S2CGameOver @g (n - st) yours (fmap (liftA2 (,) (toMisoString . connName) connPoints) $ Map.elems $ Map.delete ci1 conns)
+      when (foldr (max . connPoints) 0 (Map.elems conns) == yours) $ send conn $ S2CAchieve @g [WinOnlineGame]
+    forM_ (map connConnection $ Map.elems conns) $ flip send $ S2CAchieve @g as
     pure gt
   FoundSet as d' -> do
-    let gt' = gt{ stateDeck = d', stateConnections = Map.update (\(conn, count) -> Just (conn, count + 1)) ci conns }
-    send (fst $ fromJust $ Map.lookup ci conns) $ S2CAchieve @g as
+    let gt' = gt{ stateDeck = d', stateConnections = Map.update (\c@ConnInfo{ connPoints = p } -> Just c{ connPoints = p + 1 }) ci conns }
+    send (connConnection $ fromJust $ Map.lookup ci conns) $ S2CAchieve @g as
     checkForSet ci gt' []
   Redealt d' -> do
     let gt' = gt{ stateDeck = d' }

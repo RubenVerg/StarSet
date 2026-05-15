@@ -1,4 +1,4 @@
-{-# LANGUAGE ViewPatterns, OverloadedStrings, DerivingVia #-}
+{-# LANGUAGE DerivingVia #-}
 
 module StarSet.Message
   ( C2SMessage(..)
@@ -30,7 +30,7 @@ deriving via (ViaAeson (C2SMessage g)) instance Game g => Miso.ToJSON (C2SMessag
 data S2CMessage g
   = S2CSetDeck Natural [Card g]
   | S2CInfo { infoStart :: Double, infoCode :: MisoString, infoPlayers :: Natural }
-  | S2CGameOver { overTime :: Double, overYours :: Natural, overOthers :: [Natural] }
+  | S2CGameOver { overTime :: Double, overYours :: Natural, overOthers :: [(MisoString, Natural)] }
   | S2CAchieve { achieve :: Set Achievement }
   deriving (Generic)
 
